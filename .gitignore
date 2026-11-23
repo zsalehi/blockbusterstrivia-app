@@ -40,3 +40,6 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# Homestead is Personal Use licensed; do not redistribute in a public repo
+/src/fonts/

@@ -120,7 +120,7 @@ export default function HomePage() {
       <section className="mx-auto max-w-6xl px-4 py-20 lg:py-24">
         <div className="max-w-2xl">
           <p className="eyebrow">How it works</p>
-          <h2 className="mt-3 text-3xl font-bold sm:text-4xl">
+          <h2 className="mt-3 font-brand text-2xl sm:text-3xl">
             Trivia, but you have to earn the board.
           </h2>
           <p className="mt-4 text-muted-foreground">
@@ -177,7 +177,7 @@ export default function HomePage() {
         <HexPattern className="text-white/[0.03]" />
         <div className="relative mx-auto max-w-3xl px-4 py-20 lg:py-24">
           <p className="eyebrow">Our story</p>
-          <h2 className="mt-3 text-3xl font-bold sm:text-4xl">About BlockBusters</h2>
+          <h2 className="mt-3 font-brand text-2xl sm:text-3xl">About BlockBusters</h2>
 
           <div className="mt-6 space-y-5 text-muted-foreground">
             <p>
@@ -189,7 +189,7 @@ export default function HomePage() {
           </div>
 
           <blockquote className="my-8 border-l-2 border-primary pl-6">
-            <p className="font-display text-2xl leading-snug font-medium text-foreground italic sm:text-3xl">
+            <p className="text-2xl leading-snug font-medium text-foreground italic sm:text-3xl">
               &ldquo;Seek knowledge from the cradle to the grave.&rdquo;
             </p>
           </blockquote>
@@ -207,7 +207,7 @@ export default function HomePage() {
       {/* FAQ */}
       <section className="mx-auto max-w-3xl px-4 py-20 lg:py-24">
         <p className="eyebrow">Questions</p>
-        <h2 className="mt-3 text-3xl font-bold sm:text-4xl">Frequently asked</h2>
+        <h2 className="mt-3 font-brand text-2xl sm:text-3xl">Frequently asked</h2>
         <div className="mt-8">
           <Faq items={FAQ_ITEMS} />
         </div>

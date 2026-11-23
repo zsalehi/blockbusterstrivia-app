@@ -3,6 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import { Menu, X } from "lucide-react";
+import { MobileAccountLinks } from "@/components/account-menu";
 
 export function MobileNav({ links }: { links: { href: string; label: string }[] }) {
   const [open, setOpen] = useState(false);
@@ -32,6 +33,7 @@ export function MobileNav({ links }: { links: { href: string; label: string }[] 
                 {link.label}
               </Link>
             ))}
+            <MobileAccountLinks onNavigate={() => setOpen(false)} />
           </nav>
         </div>
       )}

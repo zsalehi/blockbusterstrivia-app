@@ -10,6 +10,7 @@ export const auth = betterAuth({
   secret: process.env.BETTER_AUTH_SECRET,
   database: pool,
   advanced: { database: { generateId: "uuid" } },
+  session: { expiresIn: 60 * 60 * 24 * 15, updateAge: 60 * 60 * 24 },
   plugins: [
     magicLink({
       expiresIn: 60 * 15,
@@ -21,7 +22,8 @@ export const auth = betterAuth({
             "Log in to BlockBusters Trivia",
             "Click the button below to log in. This link expires in 15 minutes and works once.",
             "Log in",
-            url
+            url,
+            { note: "If you didn’t ask for this email, you can safely ignore it. Nobody can log in without this link." }
           ),
         })
       },

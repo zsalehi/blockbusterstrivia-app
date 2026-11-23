@@ -2,11 +2,11 @@ import Link from "next/link";
 import { Logo } from "@/components/logo";
 import { Button } from "@/components/ui/button";
 import { MobileNav } from "@/components/mobile-nav";
+import { AccountMenu } from "@/components/account-menu";
 
 const LINKS = [
   { href: "/competitions", label: "Competitions" },
   { href: "/schedule", label: "Schedule" },
-  { href: "/login", label: "Login" },
 ];
 
 export default function Navbar() {
@@ -22,16 +22,17 @@ export default function Navbar() {
             <Link
               key={link.href}
               href={link.href}
-              className="text-sm font-medium text-muted-foreground transition-colors hover:text-foreground"
+              className="font-display text-lg tracking-wider text-muted-foreground transition-colors hover:text-foreground"
             >
               {link.label}
             </Link>
           ))}
         </nav>
 
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-3">
+          <AccountMenu />
           <Button asChild>
-            <Link href="/competitions">Register</Link>
+            <Link href="/register-team">Register</Link>
           </Button>
           <MobileNav links={LINKS} />
         </div>

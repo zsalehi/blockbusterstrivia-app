@@ -1,156 +1,86 @@
 import type { Metadata } from 'next'
-import { createTeam, inviteToTeam, revokeInviteAction } from './actions'
+import Link from 'next/link'
+import { redirect } from 'next/navigation'
 import { getSessionUser } from '@/lib/session'
 import { query } from '@/lib/db'
 import { isRegistrationOpen } from '@/lib/competition'
-import { Input } from '@/components/ui/input'
+import { PageHeader } from '@/components/page-header'
+import { TeamLogo } from '@/components/team-logo'
 import { Button } from '@/components/ui/button'
 
-export const metadata: Metadata = { title: 'My Teams' }
+export const metadata: Metadata = { title: 'My teams' }
 export const dynamic = 'force-dynamic'
 
-type MyTeam = {
-  team_id: string
-  team_name: string
-  role: 'captain' | 'member'
-  competition_title: string
-}
-
-type PendingInvite = {
-  id: string
-  team_id: string
-  invitee_email: string
-  expires_at: Date
-  token: string
-}
-
-type OpenCompetition = {
-  id: string
-  title: string
-  registration_opens: Date | null
-  registration_closes: Date | null
-}
+type MyTeam = { team_id: string; team_name: string; role: string; competition_title: string; logo_url: string | null }
+type Comp = { id: string; title: string; registration_opens: Date | null; registration_closes: Date | null }
 
 export default async function TeamsPage() {
   const user = await getSessionUser()
-  if (!user) {
-    return (
-      <p className="text-center mt-10">
-        Please <a href="/login?next=%2Fteams" className="underline">log in</a> to view your teams.
-      </p>
-    )
-  }
+  if (!user) redirect('/login?next=%2Fteams')
 
   const teams = await query<MyTeam>(
-    `select team_id, team_name, role, competition_title
-       from v_my_teams where user_id = $1 order by team_name`,
+    `select v.team_id, v.team_name, v.role, c.title as competition_title, t.logo_url
+       from v_my_teams v
+       join teams t on t.id = v.team_id
+       join competitions c on c.id = v.competition_id
+      where v.user_id = $1
+      order by c.start_at nulls last, v.team_name`,
     [user.id]
   )
-
-  const invites = teams.length
-    ? await query<PendingInvite>(
-        `select id, team_id, invitee_email, expires_at, token
-           from team_invitations
-          where team_id = any($1) and status = 'pending' and expires_at > now()
-          order by created_at desc`,
-        [teams.map((t) => t.team_id)]
-      )
-    : []
-
-  const invitesByTeam = new Map<string, PendingInvite[]>()
-  for (const inv of invites) {
-    invitesByTeam.set(inv.team_id, [...(invitesByTeam.get(inv.team_id) ?? []), inv])
-  }
-
-  const competitions = (
-    await query<OpenCompetition>(
-      `select id, title, registration_opens, registration_closes
-         from competitions order by start_at nulls last`
+  const registeredIn = new Set(
+    (await query<{ competition_id: string }>(`select competition_id from v_my_teams where user_id = $1`, [user.id])).map(
+      (r) => r.competition_id
     )
-  ).filter((c) => isRegistrationOpen(c))
+  )
+  const open = (
+    await query<Comp>(`select id, title, registration_opens, registration_closes from competitions order by start_at nulls last`)
+  ).filter((c) => isRegistrationOpen(c) && !registeredIn.has(c.id))
 
   return (
-    <div className="max-w-xl mx-auto space-y-8 px-4 py-8">
-      <section>
-        <h1 className="text-3xl font-bold mb-2">My Teams</h1>
-        {teams.length ? (
-          <ul className="space-y-2">
-            {teams.map((t) => {
-              const teamInvites = invitesByTeam.get(t.team_id) ?? []
-              return (
-                <li key={t.team_id} className="border rounded p-3 space-y-3">
-                  <div>
-                    <p className="font-semibold">{t.team_name}</p>
+    <>
+      <PageHeader eyebrow="Your account" title="My teams" />
+      <div className="mx-auto max-w-3xl space-y-10 px-4 py-10">
+        <section>
+          {teams.length ? (
+            <ul className="space-y-3">
+              {teams.map((t) => (
+                <li key={t.team_id} className="flex items-center gap-4 rounded-xl border bg-card p-4">
+                  <TeamLogo url={t.logo_url} name={t.team_name} className="size-12" />
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate font-display text-lg font-semibold">{t.team_name}</p>
                     <p className="text-sm text-muted-foreground">
-                      Competition: {t.competition_title} • Role: {t.role}
+                      {t.competition_title} · {t.role === 'captain' ? 'Captain' : 'Player'}
                     </p>
                   </div>
-
-                  {t.role === 'captain' && (
-                    <form action={inviteToTeam} className="flex flex-wrap gap-2 items-center">
-                      <input type="hidden" name="team_id" value={t.team_id} />
-                      <Input type="email" name="email" placeholder="Invite by email" required className="max-w-sm" />
-                      <Button type="submit">Invite</Button>
-                    </form>
-                  )}
-
-                  {t.role === 'captain' && teamInvites.length > 0 && (
-                    <div className="rounded bg-muted/30 p-3">
-                      <p className="text-sm font-medium mb-2">Pending invites</p>
-                      <ul className="space-y-1">
-                        {teamInvites.map((inv) => (
-                          <li key={inv.id} className="flex items-center justify-between text-sm">
-                            <span>{inv.invitee_email}</span>
-                            <div className="flex items-center gap-2">
-                              <span className="text-muted-foreground">
-                                expires {inv.expires_at.toLocaleString()}
-                              </span>
-                              <a className="underline" href={`/invite?token=${inv.token}`}>Link</a>
-                              <form action={revokeInviteAction}>
-                                <input type="hidden" name="invite_id" value={inv.id} />
-                                <Button variant="ghost" size="sm">Revoke</Button>
-                              </form>
-                            </div>
-                          </li>
-                        ))}
-                      </ul>
-                    </div>
-                  )}
+                  <Button variant="outline" asChild>
+                    <Link href={`/team?id=${t.team_id}`}>{t.role === 'captain' ? 'Manage' : 'View'}</Link>
+                  </Button>
                 </li>
-              )
-            })}
-          </ul>
-        ) : (
-          <p className="text-muted-foreground">You’re not on any teams yet.</p>
-        )}
-      </section>
-
-      <section>
-        <h2 className="text-2xl font-semibold mb-2">Create a Team</h2>
-        {competitions.length ? (
-          <form
-            action={async (formData) => {
-              'use server'
-              await createTeam(formData)
-            }}
-            className="flex flex-col gap-3"
-          >
-            <Input name="name" placeholder="Team name" required />
-            <select
-              name="competition_id"
-              required
-              className="border-input bg-background h-9 rounded-md border px-3 text-sm"
-            >
-              {competitions.map((c) => (
-                <option key={c.id} value={c.id}>{c.title}</option>
               ))}
-            </select>
-            <Button type="submit">Create Team</Button>
-          </form>
-        ) : (
-          <p className="text-muted-foreground">No competitions are open for registration right now.</p>
+            </ul>
+          ) : (
+            <p className="rounded-xl border bg-card p-6 text-muted-foreground">
+              You’re not on a team yet. Register one below, or open the invite link your captain emailed you.
+            </p>
+          )}
+        </section>
+
+        {open.length > 0 && (
+          <section>
+            <h2 className="mb-3 font-display text-xl font-semibold">Registration is open</h2>
+            <ul className="space-y-3">
+              {open.map((c) => (
+                <li key={c.id} className="flex items-center justify-between gap-4 rounded-xl border bg-card p-4">
+                  <span className="font-medium">{c.title}</span>
+                  <Button asChild>
+                    <Link href={`/register-team?competition_id=${c.id}`}>Register a team</Link>
+                  </Button>
+                </li>
+              ))}
+            </ul>
+          </section>
         )}
-      </section>
-    </div>
+      </div>
+    </>
   )
 }

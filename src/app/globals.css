@@ -6,9 +6,9 @@
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-body);
-  --font-display: var(--font-display);
-  --font-mono: var(--font-geist-mono);
+  --font-sans: var(--font-barlow), ui-sans-serif, system-ui, sans-serif;
+  --font-display: var(--font-bebas), Impact, sans-serif;
+  --font-brand: var(--font-homestead), Georgia, serif;
   --color-brand-red: var(--brand-red);
   --color-brand-blue: var(--brand-blue);
   --color-brand-green: var(--brand-green);
@@ -99,11 +99,18 @@
   body {
     @apply bg-background text-foreground;
   }
-  h1, h2, h3, h4, h5, h6 {
-    @apply font-display tracking-tight;
+  html {
+    /* Bebas Neue and Homestead have one weight; never fake bold or italic. */
+    font-synthesis: none;
+  }
+  h1 {
+    @apply font-brand font-normal tracking-normal;
+  }
+  h2, h3, h4, h5, h6 {
+    @apply font-display font-normal tracking-wide;
   }
 }
 
 @utility eyebrow {
-  @apply text-xs font-semibold tracking-[0.18em] text-primary uppercase;
+  @apply font-display text-base tracking-[0.14em] text-primary uppercase;
 }

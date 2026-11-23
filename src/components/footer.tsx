@@ -40,7 +40,7 @@ export default function Footer() {
 
           {COLUMNS.map((column) => (
             <div key={column.title}>
-              <h2 className="mb-3 text-sm font-semibold tracking-wide text-foreground uppercase">
+              <h2 className="mb-3 text-lg text-foreground">
                 {column.title}
               </h2>
               <ul className="space-y-2 text-sm text-muted-foreground">
@@ -56,7 +56,7 @@ export default function Footer() {
           ))}
 
           <div>
-            <h2 className="mb-3 text-sm font-semibold tracking-wide text-foreground uppercase">
+            <h2 className="mb-3 text-lg text-foreground">
               Contact
             </h2>
             <ul className="space-y-2 text-sm text-muted-foreground">

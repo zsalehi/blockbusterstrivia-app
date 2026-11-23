@@ -1,10 +1,16 @@
-// src/app/competitions/[id]/page.tsx
+import type { Metadata } from 'next'
+import Link from 'next/link'
 import { notFound } from 'next/navigation'
-import { joinTeam, createTeam } from '@/app/teams/actions'
+import { format } from 'date-fns'
 import { getSessionUser } from '@/lib/session'
 import { query, queryOne } from '@/lib/db'
 import { isRegistrationOpen } from '@/lib/competition'
+import { PageHeader } from '@/components/page-header'
+import { TeamLogo } from '@/components/team-logo'
 import { Button } from '@/components/ui/button'
+
+export const metadata: Metadata = { title: 'Competition' }
+export const dynamic = 'force-dynamic'
 
 type Competition = {
   id: string
@@ -12,113 +18,80 @@ type Competition = {
   description: string | null
   registration_opens: Date | null
   registration_closes: Date | null
+  start_at: Date | null
+  end_at: Date | null
 }
 
 export default async function CompetitionDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params
-  const user = await getSessionUser()
 
-  const comp = /^[0-9a-f-]{36}$/i.test(id)
+  const comp = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id)
     ? await queryOne<Competition>(
-        `select id, title, description, registration_opens, registration_closes
+        `select id, title, description, registration_opens, registration_closes, start_at, end_at
            from competitions where id = $1`,
         [id]
       )
     : null
   if (!comp) notFound()
 
-  const teams = await query<{ id: string; name: string }>(
-    `select id, name from teams where competition_id = $1 order by created_at`,
+  const user = await getSessionUser()
+  const teams = await query<{ id: string; name: string; logo_url: string | null }>(
+    `select id, name, logo_url from teams where competition_id = $1 order by name`,
     [comp.id]
   )
-
   const myTeam = user
     ? await queryOne<{ team_id: string }>(
         `select team_id from v_my_teams where user_id = $1 and competition_id = $2`,
         [user.id, comp.id]
       )
     : null
-  const myTeamId = myTeam?.team_id ?? null
-
-  const registrationOpen = isRegistrationOpen(comp)
+  const open = isRegistrationOpen(comp)
 
   return (
-    <div className="space-y-6">
-      <header>
-        <h1 className="text-3xl font-bold">{comp.title}</h1>
-        <p className="text-muted-foreground">{comp.description}</p>
-      </header>
-
-      {!user ? (
-        <p className="text-sm">
-          Please <a href={`/login?next=${encodeURIComponent(`/competitions/${comp.id}`)}`} className="underline">log in</a> to join a team.
-        </p>
-      ) : myTeamId ? (
-        <p className="rounded border p-3 bg-muted/40">
-          You’re already on a team for this competition.
-        </p>
-      ) : !registrationOpen ? (
-        <p className="rounded border p-3 bg-muted/40">
-          Registration is currently closed.
-        </p>
-      ) : null}
-
-      {/* CREATE TEAM FORM */}
-      {user && registrationOpen && !myTeamId ? (
-        <div className="border rounded p-4 mb-6">
-          <h2 className="text-xl font-semibold mb-2">Create a Team</h2>
-          <form
-            action={async (formData) => {
-              'use server'
-              formData.set('competition_id', id)
-              await createTeam(formData)
-            }}
-            className="flex flex-col sm:flex-row gap-3"
-          >
-            <input
-              type="text"
-              name="name"
-              placeholder="Team name"
-              required
-              className="border rounded px-3 py-2 flex-1"
-            />
-            <button
-              type="submit"
-              className="bg-black text-white rounded px-4 py-2"
-            >
-              Create Team
-            </button>
-          </form>
+    <>
+      <PageHeader
+        eyebrow={comp.start_at ? `Starts ${format(comp.start_at, 'MMMM d, yyyy')}` : 'Competition'}
+        title={comp.title}
+        lead={comp.description ?? undefined}
+      />
+      <div className="mx-auto max-w-3xl space-y-8 px-4 py-10">
+        <div className="flex flex-wrap items-center gap-4 rounded-xl border bg-card p-5">
+          <p className="flex-1 text-muted-foreground">
+            {myTeam
+              ? 'Your team is registered for this competition.'
+              : open
+                ? 'Registration is open.'
+                : 'Registration is closed.'}
+          </p>
+          {myTeam ? (
+            <Button asChild>
+              <Link href={`/team?id=${myTeam.team_id}`}>Manage your team</Link>
+            </Button>
+          ) : open ? (
+            <Button asChild>
+              <Link href={`/register-team?competition_id=${comp.id}`}>Register your team</Link>
+            </Button>
+          ) : null}
         </div>
-      ) : null}
-      
-      <section>
-        <h2 className="text-xl font-semibold mb-2">Teams</h2>
-        {teams.length ? (
-          <ul className="space-y-2">
-            {teams.map((t) => (
-              <li key={t.id} className="flex items-center justify-between border rounded p-3">
-                <div>
-                  <p className="font-medium">{t.name}</p>
-                  {/* Optional: show captain, members, etc. */}
-                </div>
 
-                {/* Only show Join if user is eligible */}
-                {user && !myTeamId && registrationOpen ? (
-                  <form action={joinTeam}>
-                    <input type="hidden" name="team_id" value={t.id} />
-                    <Button type="submit" size="sm" variant="secondary">
-                      Join Team
-                    </Button>
-                  </form>
-                ) : null}
-              </li>
-            ))}
-          </ul>
-        ) : (
-          <p className="text-muted-foreground">No teams yet. Be the first to create one.</p>
-        )}
-      </section>
-    </div>
+        <section>
+          <h2 className="mb-3 font-display text-xl font-semibold">
+            Teams <span className="text-muted-foreground">({teams.length})</span>
+          </h2>
+          {teams.length ? (
+            <ul className="grid gap-3 sm:grid-cols-2">
+              {teams.map((t) => (
+                <li key={t.id} className="flex items-center gap-3 rounded-xl border bg-card p-3">
+                  <TeamLogo url={t.logo_url} name={t.name} />
+                  <span className="truncate font-medium">{t.name}</span>
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <p className="text-muted-foreground">No teams yet.</p>
+          )}
+        </section>
+      </div>
+    </>
   )
 }

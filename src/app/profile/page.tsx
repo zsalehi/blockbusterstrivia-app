@@ -1,26 +1,53 @@
-import { Input } from "@/components/ui/input"
-import { Button } from "@/components/ui/button"
+import type { Metadata } from 'next'
+import { redirect } from 'next/navigation'
+import { getSessionUser } from '@/lib/session'
+import { queryOne } from '@/lib/db'
+import Link from 'next/link'
+import { getViewer } from '@/lib/authz'
+import { PageHeader } from '@/components/page-header'
+import { ProfileForm } from './profile-form'
 
-export default function ProfilePage() {
+export const metadata: Metadata = { title: 'My profile' }
+export const dynamic = 'force-dynamic'
+
+export default async function ProfilePage() {
+  const user = await getSessionUser()
+  if (!user) redirect('/login?next=%2Fprofile')
+
+  const p = await queryOne<{ full_name: string | null; handle: string | null; phone: string | null; date_of_birth: string | null }>(
+    `select full_name, handle, phone, to_char(date_of_birth, 'YYYY-MM-DD') as date_of_birth from profiles where id = $1`,
+    [user.id]
+  )
+
+  const viewer = await getViewer()
+  const portals = [
+    ...(viewer?.isAdmin ? [{ href: '/admin', label: 'Admin portal' }] : []),
+    ...(viewer?.isAdmin || viewer?.orgs.length ? [{ href: '/organizer', label: 'Organizer portal' }] : []),
+  ]
+
   return (
-    <div className="max-w-lg">
-      <h1 className="text-3xl font-bold mb-4">My Profile</h1>
-      <form className="space-y-4">
-        <div>
-          <label className="block text-sm font-medium mb-1">Full Name</label>
-          <Input placeholder="Enter your name" />
-        </div>
-        <div>
-          <label className="block text-sm font-medium mb-1">Handle</label>
-          <Input placeholder="@yourhandle" />
-        </div>
-        <div>
-          <label className="block text-sm font-medium mb-1">Avatar</label>
-          <Input type="file" accept="image/*" />
-        </div>
-        <Button type="submit">Save Changes</Button>
-      </form>
-    </div>
+    <>
+      <PageHeader eyebrow="Your account" title="My profile" />
+      <div className="mx-auto max-w-lg px-4 py-10">
+        {portals.length > 0 && (
+          <div className="mb-8 flex flex-wrap gap-3">
+            {portals.map((p) => (
+              <Link key={p.href} href={p.href} className="rounded-lg border bg-card px-4 py-2 text-sm font-medium hover:border-primary">
+                {p.label}
+              </Link>
+            ))}
+          </div>
+        )}
+        <ProfileForm
+          email={user.email}
+          values={{
+            full_name: p?.full_name ?? '',
+            handle: p?.handle ?? '',
+            phone: p?.phone ?? '',
+            date_of_birth: p?.date_of_birth ?? '',
+          }}
+        />
+      </div>
+    </>
   )
 }
-

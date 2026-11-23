@@ -74,8 +74,7 @@ export function HexGrid({
               dominantBaseline="central"
               fill="#ffffff"
               fontSize={radius * 0.78}
-              fontWeight={700}
-              fontFamily="var(--font-display)"
+              fontFamily="var(--font-homestead), serif"
             >
               {cell.label}
             </text>

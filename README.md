@@ -23,12 +23,22 @@ docker compose up -d --build
 ```
 
 - Schema in `db/*.sql` is applied automatically the first time the database starts (empty volume only).
-  For later schema changes add `db/003_*.sql` and run it manually:
-  `docker compose exec -T db psql -U bbt -d bbt < db/003_*.sql`
+  For later schema changes add `db/004_*.sql` and run it manually:
+  `docker compose exec -T db psql -U bbt -d bbt < db/004_*.sql`
 - Update: `git pull && docker compose up -d --build`
 - **Public server (VPS):** point DNS A records for the apex and `www` at the server; Caddy gets certificates itself. Open ports 80 and 443 only.
 - **Home server:** either forward 80/443 on the router (if the ISP allows it), or use Cloudflare Tunnel:
   set `SITE_ADDRESS=:80` and `TUNNEL_TOKEN`, then `docker compose --profile tunnel up -d`.
+
+Running it on Unraid: see [docs/unraid.md](docs/unraid.md).
+
+## Admin and organizer portals
+
+- `/admin` (platform admins): overview, organizations, every competition, users and roles, activity log.
+- `/organizer` (organization owners and managers): create and edit their own competitions, see rosters, export CSV, remove teams. Owners also manage members.
+- Communities are `organizations`; each competition belongs to one. A manager sees only their organization's data, an admin sees everything.
+- The first admin: log in once, then `node scripts/make-admin.mjs you@example.com` (in Docker, see docs/unraid.md).
+- Rosters and exports include phone numbers and dates of birth; exports and role changes are written to `audit_log`.
 
 ## Backups
 
@@ -38,18 +48,21 @@ Cron line and restore command are in the script header. Test a restore once befo
 ## Migrating from the old Supabase project
 
 ```bash
-SUPABASE_DB_URL='postgresql://postgres:<pw>@db.<ref>.supabase.co:5432/postgres' \
-DATABASE_URL='postgres://bbt:<pw>@localhost:5432/bbt' \
-node scripts/import-supabase.mjs
+docker compose run --rm -e SUPABASE_DB_URL='postgresql://postgres.<ref>:<pw>@<pooler-host>:5432/postgres' \
+  -v "$PWD/scripts:/app/scripts:ro" app node scripts/import-supabase.mjs
 ```
 
-Copies users (ids preserved), competitions, teams, members and invitations. Safe to re-run.
-It prints any source columns that have no home in the new schema; add them to `db/002_app.sql` first if you need them.
+Copies users (ids preserved), profiles, competitions, teams, roster rows and invitations.
+Reads the source only, runs in one transaction, checks row counts before committing, and is safe to re-run.
+Existing invite links (`/invite?token=...`) keep working. Everyone logs in again with a magic link.
+The data contains phone numbers and dates of birth (including a Youth division): keep the dump and backups encrypted.
 
 ## Layout
 
 - `src/lib/auth.ts`, `auth-client.ts`, `session.ts`: Better Auth config, browser client, server-side `getSessionUser()`
 - `src/lib/db.ts`: pg pool and query helpers
 - `src/lib/email.ts`: the only place that talks to the email provider
-- `src/app/**/actions.ts`: server actions; permission checks live here (there is no row-level security)
+- `src/lib/team-service.ts`: team registration, invites, roster and profile rules; every permission check (captain-only, registration window, one team per competition) lives here because there is no row-level security
+- `src/lib/authz.ts`, `portal-service.ts`: who may do what in the admin and organizer portals (organization roles, competition rules, CSV export, audit log)
+- `src/app/**/actions.ts`: thin server-action wrappers around the services
 - `db/`: SQL schema

@@ -1,18 +1,31 @@
 import type { Metadata } from "next";
-import { Oswald, Inter } from "next/font/google";
+import { Bebas_Neue, Barlow } from "next/font/google";
+import localFont from "next/font/local";
 import "./globals.css";
 import Navbar from "@/components/navbar";
 import Footer from "@/components/footer";
 
-const oswald = Oswald({
-  variable: "--font-display",
-  subsets: ["latin"],
-  weight: ["500", "600", "700"],
+// Homestead: collegiate slab that matches the logo lettering. Page titles and big section headings only.
+const homestead = localFont({
+  src: "../fonts/Homestead-Regular.ttf",
+  variable: "--font-homestead",
+  weight: "400",
+  display: "swap",
 });
 
-const inter = Inter({
-  variable: "--font-body",
+// Bebas Neue: secondary headings, labels, buttons, numbers.
+const bebas = Bebas_Neue({
+  variable: "--font-bebas",
   subsets: ["latin"],
+  weight: "400",
+});
+
+// Barlow: all running text, forms and tables.
+const barlow = Barlow({
+  variable: "--font-barlow",
+  subsets: ["latin"],
+  weight: ["400", "500", "600", "700"],
+  style: ["normal", "italic"],
 });
 
 export const metadata: Metadata = {
@@ -25,7 +38,7 @@ export const metadata: Metadata = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en" className={`dark ${oswald.variable} ${inter.variable}`}>
+    <html lang="en" className={`dark ${homestead.variable} ${bebas.variable} ${barlow.variable}`}>
       <body className="flex min-h-screen flex-col bg-background font-sans text-foreground antialiased">
         <Navbar />
         <main className="flex-1">{children}</main>
