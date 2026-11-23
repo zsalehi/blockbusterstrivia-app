@@ -1,31 +1,36 @@
 import type { Metadata } from "next";
-import { Geist, Geist_Mono } from "next/font/google";
+import { Oswald, Inter } from "next/font/google";
 import "./globals.css";
-import Navbar from "@/components/navbar"
+import Navbar from "@/components/navbar";
+import Footer from "@/components/footer";
 
+const oswald = Oswald({
+  variable: "--font-display",
+  subsets: ["latin"],
+  weight: ["500", "600", "700"],
+});
 
-const geistSans = Geist({
-  variable: "--font-geist-sans",
+const inter = Inter({
+  variable: "--font-body",
   subsets: ["latin"],
 });
 
-const geistMono = Geist_Mono({
-  variable: "--font-geist-mono",
-  subsets: ["latin"],
-});
-
-export const metadata = {
-  title: "BlockBusters Trivia",
-  description: "Join, compete, and play in the ultimate trivia challenge!",
-}
+export const metadata: Metadata = {
+  title: {
+    default: "BlockBusters Trivia Competition",
+    template: "%s · BlockBusters Trivia Competition",
+  },
+  description: "The largest Blockbusters-style trivia competition in the Toronto Shi'a community. Register your team today.",
+};
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en">
-      <body className="bg-background text-foreground">
+    <html lang="en" className={`dark ${oswald.variable} ${inter.variable}`}>
+      <body className="flex min-h-screen flex-col bg-background font-sans text-foreground antialiased">
         <Navbar />
-        <main className="mx-auto max-w-6xl px-4 py-8">{children}</main>
+        <main className="flex-1">{children}</main>
+        <Footer />
       </body>
     </html>
-  )
+  );
 }

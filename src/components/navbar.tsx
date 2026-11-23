@@ -1,37 +1,41 @@
-import Link from "next/link"
-import { NavigationMenu, NavigationMenuItem, NavigationMenuList } from "@/components/ui/navigation-menu"
-import { Button } from "@/components/ui/button"
+import Link from "next/link";
+import { Logo } from "@/components/logo";
+import { Button } from "@/components/ui/button";
+import { MobileNav } from "@/components/mobile-nav";
+
+const LINKS = [
+  { href: "/competitions", label: "Competitions" },
+  { href: "/schedule", label: "Schedule" },
+  { href: "/login", label: "Login" },
+];
 
 export default function Navbar() {
   return (
-    <nav className="border-b bg-background sticky top-0 z-50">
-      <div className="mx-auto flex max-w-6xl items-center justify-between px-4 py-3">
-        <Link href="/" className="text-2xl font-bold">
-          BlockBusters Trivia
+    <header className="sticky top-0 z-50 border-b border-border bg-background/90 backdrop-blur">
+      <div className="relative mx-auto flex max-w-6xl items-center justify-between gap-4 px-4 py-2.5">
+        <Link href="/" aria-label="BlockBusters Trivia home" className="shrink-0">
+          <Logo className="w-[140px] sm:w-[178px]" />
         </Link>
-        <NavigationMenu>
-          <NavigationMenuList className="space-x-4">
-            <NavigationMenuItem>
-              <Link href="/competitions" className="text-sm font-medium hover:underline">
-                Competitions
-              </Link>
-            </NavigationMenuItem>
-            <NavigationMenuItem>
-              <Link href="/teams" className="text-sm font-medium hover:underline">
-                Teams
-              </Link>
-            </NavigationMenuItem>
-            <NavigationMenuItem>
-              <Link href="/profile" className="text-sm font-medium hover:underline">
-                Profile
-              </Link>
-            </NavigationMenuItem>
-          </NavigationMenuList>
-        </NavigationMenu>
-        <Button asChild>
-          <Link href="/login">Login</Link>
-        </Button>
+
+        <nav className="hidden items-center gap-7 md:flex">
+          {LINKS.map((link) => (
+            <Link
+              key={link.href}
+              href={link.href}
+              className="text-sm font-medium text-muted-foreground transition-colors hover:text-foreground"
+            >
+              {link.label}
+            </Link>
+          ))}
+        </nav>
+
+        <div className="flex items-center gap-2">
+          <Button asChild>
+            <Link href="/competitions">Register</Link>
+          </Button>
+          <MobileNav links={LINKS} />
+        </div>
       </div>
-    </nav>
-  )
+    </header>
+  );
 }
