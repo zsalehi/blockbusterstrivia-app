@@ -3,8 +3,9 @@
 import { useState } from "react"
 
 export function TeamLogo({ url, name, className = "size-10" }: { url: string | null; name: string; className?: string }) {
-  const [failed, setFailed] = useState(false)
-  if (!url || failed) {
+  // Remember which URL failed, so saving a new URL gets a fresh attempt instead of staying on the fallback.
+  const [failedUrl, setFailedUrl] = useState<string | null>(null)
+  if (!url || failedUrl === url) {
     return (
       <span
         aria-hidden
@@ -15,5 +16,5 @@ export function TeamLogo({ url, name, className = "size-10" }: { url: string | n
     )
   }
   // eslint-disable-next-line @next/next/no-img-element -- logos are arbitrary captain-supplied URLs
-  return <img src={url} alt="" onError={() => setFailed(true)} className={`${className} shrink-0 rounded-lg bg-secondary object-cover`} />
+  return <img src={url} alt="" onError={() => setFailedUrl(url)} className={`${className} shrink-0 rounded-lg bg-secondary object-cover`} />
 }

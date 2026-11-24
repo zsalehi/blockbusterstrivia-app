@@ -75,23 +75,58 @@ export function RemoveMemberButton({ memberId, name }: { memberId: string; name:
   )
 }
 
+// Resolves true only if the browser can actually render the URL as an image.
+// Share links (Google Photos/Drive, Dropbox, etc.) load an HTML page, so they fail here.
+function loadsAsImage(src: string, timeoutMs = 10000): Promise<boolean> {
+  return new Promise((resolve) => {
+    const img = new Image()
+    const timer = setTimeout(() => resolve(false), timeoutMs)
+    img.onload = () => {
+      clearTimeout(timer)
+      resolve(img.naturalWidth > 0)
+    }
+    img.onerror = () => {
+      clearTimeout(timer)
+      resolve(false)
+    }
+    img.src = src
+  })
+}
+
 export function LogoForm({ teamId, initialUrl }: { teamId: string; initialUrl: string }) {
   const [url, setUrl] = useState(initialUrl)
+  const [checking, setChecking] = useState(false)
+  const [notImage, setNotImage] = useState(false)
   const { pending, error, done, run } = useAction()
+  const busy = pending || checking
   return (
     <form
       className="space-y-3"
-      onSubmit={(e) => {
+      onSubmit={async (e) => {
         e.preventDefault()
+        setNotImage(false)
+        setChecking(true)
+        const ok = await loadsAsImage(url.trim())
+        setChecking(false)
+        if (!ok) return setNotImage(true)
         run(() => updateLogoAction(teamId, url), 'Logo saved.')
       }}
     >
       <div className="flex gap-2">
         <Input type="url" required placeholder="https://example.com/logo.png" value={url} onChange={(e) => setUrl(e.target.value)} />
-        <Button type="submit" disabled={pending}>Save</Button>
+        <Button type="submit" disabled={busy}>{checking ? 'Checking…' : 'Save'}</Button>
       </div>
-      <p className="text-xs text-muted-foreground">Paste a link to an image of your team logo.</p>
-      <Status error={error} done={done} />
+      <p className="text-xs text-muted-foreground">
+        Paste a direct link to an image (it usually ends in .png or .jpg). Share links from Google Photos or Drive won’t work.
+        Open the image, right-click or long-press it, and choose “Copy image address”.
+      </p>
+      {notImage ? (
+        <p role="alert" className="text-sm text-destructive">
+          That link doesn’t open an image, so it can’t be used as a logo. Use the image’s own address instead of a share link.
+        </p>
+      ) : (
+        <Status error={error} done={done} />
+      )}
     </form>
   )
 }
