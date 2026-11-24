@@ -8,6 +8,7 @@ import { PageHeader } from '@/components/page-header'
 import { TeamLogo } from '@/components/team-logo'
 import { Button } from '@/components/ui/button'
 import { AddMembersForm, InviteActions, LogoForm, RemoveMemberButton } from './team-controls'
+import { ageRuleFor, ageRuleText } from '@/lib/validation'
 
 export const metadata: Metadata = { title: 'Manage team' }
 export const dynamic = 'force-dynamic'
@@ -26,7 +27,14 @@ type Member = {
   invitation_id: string | null
   invitation_status: string | null
   invitation_expired: boolean | null
+  age_exception: 'requested' | 'approved' | 'denied' | null
 }
+
+const EXCEPTION_LABEL = {
+  requested: { text: 'Age exception requested, waiting for an organizer', tone: 'text-brand-yellow' },
+  approved: { text: 'Age exception approved', tone: 'text-emerald-400' },
+  denied: { text: 'Age exception not approved. Replace this player or contact the organizers.', tone: 'text-destructive' },
+} as const
 
 function slotStatus(m: Member): { label: string; tone: string } {
   if (m.user_id) return { label: 'Joined', tone: 'text-emerald-400' }
@@ -48,8 +56,8 @@ export default async function TeamPage({
   if (!user) redirect(`/login?next=${encodeURIComponent(here)}`)
 
   const team = UUID.test(id)
-    ? await queryOne<{ id: string; name: string; logo_url: string | null; captain_user_id: string | null; competition_id: string; competition_title: string }>(
-        `select t.id, t.name, t.logo_url, t.captain_user_id, t.competition_id, c.title as competition_title
+    ? await queryOne<{ id: string; name: string; logo_url: string | null; captain_user_id: string | null; competition_id: string; competition_title: string; min_age: number | null; max_age: number | null; start_at: Date | null }>(
+        `select t.id, t.name, t.logo_url, t.captain_user_id, t.competition_id, c.title as competition_title, c.min_age, c.max_age, c.start_at
            from teams t join competitions c on c.id = t.competition_id where t.id = $1`,
         [id]
       )
@@ -72,9 +80,10 @@ export default async function TeamPage({
   }
 
   const isCaptain = team.captain_user_id === user.id
+  const ageRule = ageRuleFor(team)
 
   const members = await query<Member>(
-    `select tm.id, tm.user_id, tm.role, tm.full_name, tm.handle, tm.phone, tm.member_email,
+    `select tm.id, tm.user_id, tm.role, tm.full_name, tm.handle, tm.phone, tm.member_email, tm.age_exception,
             case when tm.date_of_birth is not null
                  then extract(year from age(current_date, tm.date_of_birth))::int end as age,
             i.id as invitation_id, i.status as invitation_status, (i.expires_at < now()) as invitation_expired
@@ -115,6 +124,9 @@ export default async function TeamPage({
                       {m.full_name}
                       {m.role === 'captain' && <span className="ml-2 text-xs uppercase tracking-wide text-brand-yellow">Captain</span>}
                     </p>
+                    {m.age_exception && (
+                      <p className={`text-xs ${EXCEPTION_LABEL[m.age_exception].tone}`}>{EXCEPTION_LABEL[m.age_exception].text}</p>
+                    )}
                     {isCaptain && (
                       <p className="truncate text-sm text-muted-foreground">
                         {[m.member_email, m.phone, m.age !== null ? `Age ${m.age}` : null].filter(Boolean).join(' · ')}
@@ -139,7 +151,8 @@ export default async function TeamPage({
         {isCaptain && members.length < MAX_TEAM_SIZE && (
           <section className="rounded-xl border bg-card p-5">
             <h2 className="mb-4 font-display text-xl font-semibold">Add teammates</h2>
-            <AddMembersForm teamId={team.id} slotsLeft={MAX_TEAM_SIZE - members.length} />
+            {ageRuleText(ageRule) && <p className="-mt-2 mb-4 text-sm text-muted-foreground">{ageRuleText(ageRule)}</p>}
+            <AddMembersForm teamId={team.id} slotsLeft={MAX_TEAM_SIZE - members.length} ageRule={ageRule} />
           </section>
         )}
 

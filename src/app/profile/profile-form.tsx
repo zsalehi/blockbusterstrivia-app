@@ -4,6 +4,8 @@ import { useActionState } from 'react'
 import { saveProfileAction } from './actions'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
+import { CheckedInput, DobInput, HandleInput, PhoneInput } from '@/components/checked-input'
+import { checkFullName } from '@/lib/validation'
 
 type Values = { full_name: string; handle: string; phone: string; date_of_birth: string }
 
@@ -18,19 +20,25 @@ export function ProfileForm({ email, values }: { email: string; values: Values }
       </label>
       <label className={field}>
         <span className="text-sm font-medium">Full name</span>
-        <Input name="full_name" defaultValue={values.full_name} maxLength={120} />
+        <CheckedInput
+          name="full_name"
+          autoComplete="name"
+          maxLength={80}
+          defaultValue={values.full_name}
+          check={(v) => (v.trim() ? checkFullName(v) : { ok: true, value: '' })}
+        />
       </label>
       <label className={field}>
         <span className="text-sm font-medium">Handle</span>
-        <Input name="handle" defaultValue={values.handle} maxLength={60} />
+        <HandleInput name="handle" defaultValue={values.handle} />
       </label>
       <label className={field}>
         <span className="text-sm font-medium">Phone</span>
-        <Input name="phone" type="tel" defaultValue={values.phone} maxLength={40} />
+        <PhoneInput name="phone" defaultValue={values.phone} />
       </label>
       <label className={field}>
         <span className="text-sm font-medium">Date of birth</span>
-        <Input name="date_of_birth" type="date" defaultValue={values.date_of_birth} />
+        <DobInput name="date_of_birth" required={false} defaultValue={values.date_of_birth} />
       </label>
       <div className="flex items-center gap-3">
         <Button type="submit" disabled={pending}>{pending ? 'Saving…' : 'Save changes'}</Button>

@@ -7,11 +7,12 @@ import { isRegistrationOpen } from '@/lib/competition'
 import { PageHeader } from '@/components/page-header'
 import { Button } from '@/components/ui/button'
 import { RegisterTeamForm } from './register-team-form'
+import { ageRuleFor, ageRuleText } from '@/lib/validation'
 
 export const metadata: Metadata = { title: 'Register your team' }
 export const dynamic = 'force-dynamic'
 
-type Comp = { id: string; title: string; registration_opens: Date | null; registration_closes: Date | null }
+type Comp = { id: string; title: string; min_age: number | null; max_age: number | null; start_at: Date | null; registration_opens: Date | null; registration_closes: Date | null }
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
 
 export default async function RegisterTeamPage({
@@ -27,7 +28,7 @@ export default async function RegisterTeamPage({
 
   const comps = (
     await query<Comp>(
-      `select id, title, registration_opens, registration_closes from competitions order by start_at nulls last`
+      `select id, title, min_age, max_age, start_at, registration_opens, registration_closes from competitions order by start_at nulls last`
     )
   ).filter((c) => isRegistrationOpen(c))
 
@@ -70,16 +71,21 @@ export default async function RegisterTeamPage({
     [user.id]
   )
 
+  const ageRule = ageRuleFor(chosen)
+  const ageText = ageRuleText(ageRule)
+  const ageNote = ageText ? ` ${ageText}` : ''
+
   return (
     <>
       <PageHeader
         eyebrow={chosen.title}
         title="Register your team"
-        lead="You’re the captain. Add your teammates (2 to 4 players in total) and we’ll email each of them an invite to join."
+        lead={`You’re the captain. Add your teammates (2 to 4 players in total) and we’ll email each of them an invite to join.${ageNote}`}
       />
       <div className="mx-auto max-w-3xl px-4 py-10">
         <RegisterTeamForm
           competitionId={chosen.id}
+          ageRule={ageRule}
           captain={{
             email: user.email,
             full_name: profile?.full_name ?? '',

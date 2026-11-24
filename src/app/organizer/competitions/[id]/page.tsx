@@ -1,3 +1,4 @@
+import { Fragment } from 'react'
 import type { Metadata } from 'next'
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
@@ -6,10 +7,12 @@ import { UUID_RE, requireOrganizerPage, roleIn } from '@/lib/authz'
 import { competitionRoster, type RosterRow } from '@/lib/portal-service'
 import { Button } from '@/components/ui/button'
 import { TeamLogo } from '@/components/team-logo'
-import { CompetitionForm, DeleteCompetitionButton, RemoveTeamButton } from '../../organizer-controls'
+import { AgeExceptionButtons, CompetitionForm, DeleteCompetitionButton, RemoveTeamButton } from '../../organizer-controls'
 
 export const metadata: Metadata = { title: 'Manage competition' }
 export const dynamic = 'force-dynamic'
+
+const EXCEPTION_TONE = { requested: 'text-brand-yellow font-semibold', approved: 'text-emerald-400', denied: 'text-destructive' } as const
 
 const inviteLabel = (r: RosterRow) =>
   r.joined ? 'Joined' : r.invite_status === 'pending' ? 'Invite sent' : r.invite_status ? `Invite ${r.invite_status}` : 'Not invited'
@@ -20,7 +23,7 @@ export default async function ManageCompetition({ params }: { params: Promise<{ 
   if (!UUID_RE.test(id)) notFound()
   const comp = await queryOne<{
     id: string; organization_id: string | null; org_name: string | null; title: string; description: string | null; status: string; format: string
-    max_teams: number | null; registration_opens: Date | null; registration_closes: Date | null; start_at: Date | null; end_at: Date | null
+    max_teams: number | null; min_age: number | null; max_age: number | null; registration_opens: Date | null; registration_closes: Date | null; start_at: Date | null; end_at: Date | null
   }>(
     `select c.*, o.name as org_name from competitions c left join organizations o on o.id = c.organization_id where c.id = $1`,
     [id]
@@ -38,6 +41,7 @@ export default async function ManageCompetition({ params }: { params: Promise<{ 
     teams.set(r.team_id, t)
   }
   const players = roster.filter((r) => r.member_id).length
+  const pendingExceptions = roster.filter((r) => r.age_exception === 'requested').length
 
   return (
     <div className="space-y-10">
@@ -61,6 +65,8 @@ export default async function ManageCompetition({ params }: { params: Promise<{ 
             status: comp.status,
             format: comp.format,
             max_teams: comp.max_teams,
+            min_age: comp.min_age,
+            max_age: comp.max_age,
             registration_opens: comp.registration_opens?.toISOString() ?? null,
             registration_closes: comp.registration_closes?.toISOString() ?? null,
             start_at: comp.start_at?.toISOString() ?? null,
@@ -79,6 +85,11 @@ export default async function ManageCompetition({ params }: { params: Promise<{ 
           </Button>
         </div>
         <p className="text-xs text-muted-foreground">Rosters include phone numbers and dates of birth. Exports are recorded in the activity log.</p>
+        {pendingExceptions > 0 && (
+          <p role="status" className="rounded-lg border border-brand-yellow/40 bg-brand-yellow/10 p-3 text-sm">
+            {pendingExceptions} age exception request{pendingExceptions > 1 ? 's' : ''} waiting for review. They’re marked on the rosters below.
+          </p>
+        )}
         {[...teams.entries()].map(([teamId, t]) => (
           <div key={teamId} className="rounded-xl border bg-card p-4">
             <div className="flex flex-wrap items-center justify-between gap-3">
@@ -95,7 +106,8 @@ export default async function ManageCompetition({ params }: { params: Promise<{ 
                 </thead>
                 <tbody className="divide-y">
                   {t.members.map((m) => (
-                    <tr key={m.member_id}>
+                    <Fragment key={m.member_id}>
+                    <tr>
                       <td className="py-1.5 pr-3 font-medium">{m.full_name}</td>
                       <td className="py-1.5 pr-3 capitalize">{m.role}</td>
                       <td className="py-1.5 pr-3 text-muted-foreground">{m.member_email ?? '—'}</td>
@@ -103,6 +115,18 @@ export default async function ManageCompetition({ params }: { params: Promise<{ 
                       <td className="py-1.5 pr-3">{m.age ?? '—'}</td>
                       <td className="py-1.5">{inviteLabel(m)}</td>
                     </tr>
+                    {m.age_exception && (
+                      <tr className="border-t-0">
+                        <td colSpan={6} className="pb-2 pt-0">
+                          <div className="flex flex-wrap items-center gap-x-3 gap-y-1 rounded-md border border-border bg-background/60 px-3 py-2 text-xs">
+                            <span className={EXCEPTION_TONE[m.age_exception]}>Age exception {m.age_exception}</span>
+                            {m.age_exception_note && <span className="text-muted-foreground">“{m.age_exception_note}”</span>}
+                            <span className="ml-auto"><AgeExceptionButtons memberId={m.member_id} name={m.full_name} status={m.age_exception} /></span>
+                          </div>
+                        </td>
+                      </tr>
+                    )}
+                    </Fragment>
                   ))}
                 </tbody>
               </table>

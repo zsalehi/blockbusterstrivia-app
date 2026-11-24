@@ -26,14 +26,14 @@ const STEPS = [
   {
     step: "1",
     variant: "red" as const,
-    title: "Pick a letter",
-    body: "Teams take turns choosing a hexagon on the board. Every hexagon carries a letter.",
+    title: "Pick a block",
+    body: "Teams take turns choosing a hexagon on the board. Every hexagon carries a question.",
   },
   {
     step: "2",
     variant: "blue" as const,
     title: "Answer the clue",
-    body: "Buzz in first with the right answer — and the answer always starts with that letter.",
+    body: "Buzz in first with the right answer — and the answer always starts with a letter.",
   },
   {
     step: "3",
@@ -57,7 +57,7 @@ const FAQ_ITEMS = [
   {
     question: "What is the question format?",
     answer:
-      "Selecting a hexagon with a given letter means the answer to the question starts with that letter. For example, a hexagon with \"A\" might prompt: \"What A is the name of the first Imam?\" Answer: Ali.",
+      "After selecting a hexagon block the host will read a question that gives a letter clue, the letter clue is the first letter of the answer of the question. For example, a question read with a letter clue of \"A\" might prompt: \"What A is the name of the first Imam?\" Answer: Ali.",
   },
   {
     question: "How many are in a team?",
@@ -83,7 +83,7 @@ export default function HomePage() {
               Will you be the next BlockBusters Champions?
             </h1>
             <p className="mt-6 max-w-lg text-lg text-muted-foreground">
-              Four players. One hexagon board. Every answer starts with the letter you pick. Build
+              Four players. One hexagon board. Every answer starts with the letter. Build
               your team, out-think the other side, and connect the board first.
             </p>
             <div className="mt-9 flex flex-wrap gap-3">
@@ -158,7 +158,7 @@ export default function HomePage() {
                   seam={0}
                 />
               </div>
-              <p className="text-sm text-muted-foreground">You pick the letter A.</p>
+              <p className="text-sm text-muted-foreground">You pick a block with A as the letter clue.</p>
             </div>
             <p className="mt-6 text-lg leading-snug font-medium text-foreground">
               &ldquo;What <span className="text-brand-yellow">A</span> is the name of the first
@@ -185,7 +185,7 @@ export default function HomePage() {
               group of youth who set out to build a platform for Muslims to keep learning, at a
               time when there was a lack of enthusiasm for gaining knowledge among youth.
             </p>
-            <p>The vision was to embody a message attributed to the Holy Prophet (as):</p>
+            <p>The vision was to embody a message attributed to the Holy Prophet (saw):</p>
           </div>
 
           <blockquote className="my-8 border-l-2 border-primary pl-6">

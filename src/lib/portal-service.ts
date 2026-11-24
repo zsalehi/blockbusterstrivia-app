@@ -161,6 +161,8 @@ export type CompetitionInput = {
   status?: string
   format?: string
   max_teams?: string
+  min_age?: string
+  max_age?: string
   registration_opens?: string | null
   registration_closes?: string | null
   start_at?: string | null
@@ -172,6 +174,14 @@ function cleanDate(label: string, v: string | null | undefined): Date | null {
   const d = new Date(v)
   if (Number.isNaN(d.getTime())) throw new UserError(`${label} isn’t a valid date.`)
   return d
+}
+
+function cleanAge(label: string, raw: string | undefined): number | null {
+  const s = String(raw ?? "").trim()
+  if (!s) return null
+  const n = Number(s)
+  if (!Number.isInteger(n) || n < 1 || n > 99) throw new UserError(`${label} must be a whole number between 1 and 99, or left blank for no limit.`)
+  return n
 }
 
 function cleanCompetition(input: CompetitionInput) {
@@ -192,6 +202,10 @@ function cleanCompetition(input: CompetitionInput) {
     }
   }
 
+  const min_age = cleanAge("Minimum age", input.min_age)
+  const max_age = cleanAge("Maximum age", input.max_age)
+  if (min_age !== null && max_age !== null && min_age > max_age) throw new UserError("Minimum age can’t be higher than maximum age.")
+
   const registration_opens = cleanDate("Registration opens", input.registration_opens)
   const registration_closes = cleanDate("Registration closes", input.registration_closes)
   const start_at = cleanDate("Start date", input.start_at)
@@ -204,10 +218,10 @@ function cleanCompetition(input: CompetitionInput) {
   }
   if (start_at && end_at && end_at < start_at) throw new UserError("The end date must be after the start date.")
 
-  return { title, description, status, format, max_teams, registration_opens, registration_closes, start_at, end_at }
+  return { title, description, status, format, max_teams, min_age, max_age, registration_opens, registration_closes, start_at, end_at }
 }
 
-const COMP_COLS = `title, description, status, format, max_teams, registration_opens, registration_closes, start_at, end_at`
+const COMP_COLS = `title, description, status, format, max_teams, min_age, max_age, registration_opens, registration_closes, start_at, end_at`
 
 export async function createCompetition(actor: SessionUser, orgId: string, input: CompetitionInput) {
   if (!isUuid(orgId)) throw new UserError("Choose an organization.")
@@ -215,8 +229,8 @@ export async function createCompetition(actor: SessionUser, orgId: string, input
   const c = cleanCompetition(input)
   const row = await queryOne<{ id: string }>(
     `insert into competitions (organization_id, created_by, ${COMP_COLS})
-     values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11) returning id`,
-    [orgId, actor.id, c.title, c.description, c.status, c.format, c.max_teams, c.registration_opens, c.registration_closes, c.start_at, c.end_at]
+     values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13) returning id`,
+    [orgId, actor.id, c.title, c.description, c.status, c.format, c.max_teams, c.min_age, c.max_age, c.registration_opens, c.registration_closes, c.start_at, c.end_at]
   )
   await audit(actor, "competition.create", row!.id, c.title)
   revalidatePublic()
@@ -232,9 +246,9 @@ export async function updateCompetition(actor: SessionUser, competitionId: strin
   }
   await query(
     `update competitions set title = $2, description = $3, status = $4, format = $5, max_teams = $6,
-            registration_opens = $7, registration_closes = $8, start_at = $9, end_at = $10
+            registration_opens = $7, registration_closes = $8, start_at = $9, end_at = $10, min_age = $11, max_age = $12
       where id = $1`,
-    [competitionId, c.title, c.description, c.status, c.format, c.max_teams, c.registration_opens, c.registration_closes, c.start_at, c.end_at]
+    [competitionId, c.title, c.description, c.status, c.format, c.max_teams, c.registration_opens, c.registration_closes, c.start_at, c.end_at, c.min_age, c.max_age]
   )
   await audit(actor, "competition.update", competitionId, c.title)
   revalidatePublic()
@@ -265,6 +279,26 @@ export async function removeTeam(actor: SessionUser, teamId: string) {
   revalidatePath(`/competitions/${team.competition_id}`)
 }
 
+// Approve or deny a player's request to play under the competition's minimum age.
+export async function decideAgeException(actor: SessionUser, memberId: string, decision: "approved" | "denied") {
+  if (!isUuid(memberId)) throw new UserError("Player not found.")
+  if (decision !== "approved" && decision !== "denied") throw new UserError("Choose approve or deny.")
+  const m = await queryOne<{ full_name: string; age_exception: string | null; competition_id: string; team_name: string }>(
+    `select tm.full_name, tm.age_exception, t.competition_id, t.name as team_name
+       from team_members tm join teams t on t.id = tm.team_id where tm.id = $1`,
+    [memberId]
+  )
+  if (!m || !m.age_exception) throw new UserError("That player has no age exception request.")
+  await assertCompetitionAccess(actor, m.competition_id)
+  await query(
+    `update team_members set age_exception = $2, age_exception_decided_by = $3, age_exception_decided_at = now() where id = $1`,
+    [memberId, decision, actor.id]
+  )
+  await audit(actor, `age_exception.${decision === "approved" ? "approve" : "deny"}`, m.competition_id, `${m.full_name} (${m.team_name})`)
+  revalidatePath(`/organizer/competitions/${m.competition_id}`)
+  revalidatePath("/team")
+}
+
 // ---------- reads for the portals ----------
 
 export type RosterRow = {
@@ -280,6 +314,8 @@ export type RosterRow = {
   age: number | null
   joined: boolean
   invite_status: string | null
+  age_exception: "requested" | "approved" | "denied" | null
+  age_exception_note: string | null
 }
 
 // Full roster with contact details. Callers must have passed assertCompetitionAccess first.
@@ -290,7 +326,7 @@ export async function competitionRoster(competitionId: string): Promise<RosterRo
             to_char(tm.date_of_birth, 'YYYY-MM-DD') as date_of_birth,
             case when tm.date_of_birth is not null
                  then extract(year from age(current_date, tm.date_of_birth))::int end as age,
-            (tm.user_id is not null) as joined,
+            (tm.user_id is not null) as joined, tm.age_exception, tm.age_exception_note,
             (select i.status from team_invitations i where i.team_member_id = tm.id
               order by i.created_at desc limit 1) as invite_status
        from teams t
@@ -311,7 +347,7 @@ function csvCell(v: unknown): string {
 export async function competitionRosterCsv(actor: SessionUser, competitionId: string): Promise<{ csv: string; title: string }> {
   const comp = await assertCompetitionAccess(actor, competitionId)
   const rows = await competitionRoster(competitionId)
-  const header = ["Team", "Name", "Role", "Email", "Phone", "Date of birth", "Age", "Account", "Invite"]
+  const header = ["Team", "Name", "Role", "Email", "Phone", "Date of birth", "Age", "Account", "Invite", "Age exception", "Exception reason"]
   const lines = [header, ...rows.filter((r) => r.member_id).map((r) => [
     r.team_name,
     r.full_name,
@@ -322,6 +358,8 @@ export async function competitionRosterCsv(actor: SessionUser, competitionId: st
     r.age,
     r.joined ? "joined" : "not yet",
     r.invite_status ?? "",
+    r.age_exception ?? "",
+    r.age_exception_note ?? "",
   ])]
   await audit(actor, "roster.export", competitionId, comp.title)
   return { csv: lines.map((l) => l.map(csvCell).join(",")).join("\r\n") + "\r\n", title: comp.title }

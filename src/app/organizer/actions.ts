@@ -4,6 +4,7 @@ import { run } from '@/lib/action'
 import {
   addOrgMember,
   createCompetition,
+  decideAgeException,
   deleteCompetition,
   removeOrgMember,
   removeTeam,
@@ -56,6 +57,13 @@ export async function addOrgMemberAction(orgId: string, email: string, role: Org
 export async function removeOrgMemberAction(orgId: string, userId: string) {
   return run(async (user) => {
     await removeOrgMember(user, orgId, userId)
+    return {}
+  })
+}
+
+export async function decideAgeExceptionAction(memberId: string, decision: 'approved' | 'denied') {
+  return run(async (user) => {
+    await decideAgeException(user, memberId, decision)
     return {}
   })
 }

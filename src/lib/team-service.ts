@@ -7,6 +7,7 @@ import { emailLayout, emailShell, escapeHtml, sendEmail, sendEmailsPaced } from 
 import { isRegistrationOpen } from "./competition"
 import { siteUrl } from "./site-url"
 import type { SessionUser } from "./session"
+import { ageRuleFor, checkDob, checkFullName, checkHandle, checkMember, checkPhone, checkTeamName, type AgeRule } from "./validation"
 
 export const MIN_TEAM_SIZE = 2
 export const MAX_TEAM_SIZE = 4
@@ -22,6 +23,7 @@ export type MemberInput = {
   email?: string
   handle?: string
   phone?: string
+  age_exception_reason?: string
 }
 
 type CleanMember = {
@@ -31,34 +33,27 @@ type CleanMember = {
   email: string
   handle: string
   phone: string
+  age_exception_note: string
 }
 
 const normalizeEmail = (e: unknown) => String(e ?? "").trim().toLowerCase()
-const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 
 function newToken() {
   return crypto.randomBytes(24).toString("hex")
 }
 
-function cleanMember(m: MemberInput, index: number, role: "captain" | "member"): CleanMember {
-  const label = `Member ${index + 1}`
-  const full_name = String(m.full_name ?? "").trim().slice(0, 120)
-  const date_of_birth = String(m.date_of_birth ?? "").trim()
-  const email = normalizeEmail(m.email)
-  if (!full_name) throw new UserError(`${label}: full name is required.`)
-  const dob = new Date(date_of_birth)
-  if (!/^\d{4}-\d{2}-\d{2}$/.test(date_of_birth) || Number.isNaN(dob.getTime()) || dob >= new Date()) {
-    throw new UserError(`${label}: a valid date of birth is required.`)
-  }
-  if (email && !EMAIL_RE.test(email)) throw new UserError(`${label}: that email address isn’t valid.`)
-  return {
-    role,
-    full_name,
-    date_of_birth,
-    email,
-    handle: String(m.handle ?? "").trim().replace(/^@/, "").slice(0, 60),
-    phone: String(m.phone ?? "").trim().slice(0, 40),
-  }
+function cleanMember(m: MemberInput, label: string, role: "captain" | "member", rule: AgeRule): CleanMember {
+  const r = checkMember(m, label, rule)
+  if (!r.ok) throw new UserError(r.error)
+  return { role, ...r.value }
+}
+
+async function competitionAgeRule(competitionId: string, db?: PoolClient): Promise<AgeRule> {
+  type Row = { min_age: number | null; max_age: number | null; start_at: Date | null }
+  const sql = `select min_age, max_age, start_at from competitions where id = $1`
+  const row = db ? (await db.query<Row>(sql, [competitionId])).rows[0] : await queryOne<Row>(sql, [competitionId])
+  if (!row) throw new UserError("Competition not found.")
+  return ageRuleFor(row)
 }
 
 function assertNoDuplicateEmails(members: CleanMember[]) {
@@ -124,15 +119,15 @@ export async function registerTeam(
   user: SessionUser,
   input: { competitionId: string; teamName: string; members: MemberInput[] }
 ): Promise<{ teamId: string; invitesCount: number }> {
-  const teamName = input.teamName.trim().slice(0, 80)
-  if (!teamName) throw new UserError("Team name is required.")
+  const name = checkTeamName(input.teamName)
+  if (!name.ok) throw new UserError(name.error)
+  const teamName = name.value
+  if (!Array.isArray(input.members)) throw new UserError("Add your team members.")
   if (input.members.length < MIN_TEAM_SIZE) throw new UserError(`A team needs at least ${MIN_TEAM_SIZE} members.`)
   if (input.members.length > MAX_TEAM_SIZE) throw new UserError(`A team can have at most ${MAX_TEAM_SIZE} members.`)
 
   const captainCount = input.members.filter((m) => m.role === "captain").length
   if (captainCount !== 1) throw new UserError("A team needs exactly one captain.")
-  const members = input.members.map((m, i) => cleanMember(m, i, m.role === "captain" ? "captain" : "member"))
-  assertNoDuplicateEmails(members)
 
   const comp = await queryOne<{
     id: string
@@ -140,15 +135,26 @@ export async function registerTeam(
     start_at: Date | null
     end_at: Date | null
     max_teams: number | null
+    min_age: number | null
+    max_age: number | null
     registration_opens: Date | null
     registration_closes: Date | null
   }>(
-    `select id, title, start_at, end_at, max_teams, registration_opens, registration_closes
+    `select id, title, start_at, end_at, max_teams, min_age, max_age, registration_opens, registration_closes
        from competitions where id = $1`,
     [input.competitionId]
   )
   if (!comp) throw new UserError("Competition not found.")
   if (!isRegistrationOpen(comp)) throw new UserError("Registration is closed for this competition.")
+
+  const rule = ageRuleFor(comp)
+  let mateNo = 0
+  const members = input.members.map((m) =>
+    m.role === "captain" ? cleanMember(m, "You (captain)", "captain", rule) : cleanMember(m, `Teammate ${++mateNo}`, "member", rule)
+  )
+  // The captain's own email is their login, never what the form sent.
+  members.find((m) => m.role === "captain")!.email = normalizeEmail(user.email)
+  assertNoDuplicateEmails(members)
 
   let result: { teamId: string; invites: { invitee_email: string; token: string }[]; teamName: string }
   try {
@@ -169,9 +175,10 @@ export async function registerTeam(
       for (const m of members) {
         const isCaptain = m.role === "captain"
         const { rows } = await db.query<{ id: string }>(
-          `insert into team_members (team_id, user_id, role, full_name, date_of_birth, handle, phone, member_email)
-           values ($1, $2, $3, $4, $5, $6, $7, $8) returning id`,
-          [team.id, isCaptain ? user.id : null, m.role, m.full_name, m.date_of_birth, m.handle || null, m.phone || null, m.email || null]
+          `insert into team_members (team_id, user_id, role, full_name, date_of_birth, handle, phone, member_email, age_exception, age_exception_note)
+           values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10) returning id`,
+          [team.id, isCaptain ? user.id : null, m.role, m.full_name, m.date_of_birth, m.handle || null, m.phone || null, m.email || null,
+           m.age_exception_note ? "requested" : null, m.age_exception_note || null]
         )
         if (!isCaptain && m.email) targets.push({ team_member_id: rows[0].id, email: m.email })
       }
@@ -208,7 +215,7 @@ function ageFrom(dob: string) {
 async function notifyAdmins(opts: {
   teamId: string
   teamName: string
-  comp: { title: string; start_at: Date | null; end_at: Date | null }
+  comp: { id: string; title: string; start_at: Date | null; end_at: Date | null }
   captainEmail: string
   members: CleanMember[]
 }) {
@@ -221,10 +228,16 @@ async function notifyAdmins(opts: {
       const line = [m.email, m.phone, m.date_of_birth ? `age ${ageFrom(m.date_of_birth)}` : ""].filter(Boolean).map(escapeHtml).join(" &middot; ")
       return `<tr><td style="padding:10px 0;border-top:1px solid #e3e7ed;font-size:15px">
         <b>${escapeHtml(m.full_name)}</b> <span style="color:#5b6b7c">&mdash; ${escapeHtml(m.role)}${m.handle ? ", @" + escapeHtml(m.handle) : ""}</span><br>
-        <span style="color:#5b6b7c;font-size:14px">${line}</span></td></tr>`
+        <span style="color:#5b6b7c;font-size:14px">${line}</span>${
+          m.age_exception_note
+            ? `<br><span style="color:#b4462f;font-size:14px"><b>Age exception requested:</b> ${escapeHtml(m.age_exception_note)}</span>`
+            : ""
+        }</td></tr>`
     })
     .join("")
   const link = `${siteUrl}/team?id=${opts.teamId}`
+  const exceptions = opts.members.filter((m) => m.age_exception_note).length
+  const review = `${siteUrl}/organizer/competitions/${opts.comp.id}`
   const html = emailShell({
     heading: "New team registration",
     preheader: `${opts.teamName} registered for ${opts.comp.title}`,
@@ -234,9 +247,10 @@ async function notifyAdmins(opts: {
         <b>Competition:</b> ${escapeHtml(opts.comp.title)}<br>
         <b>Captain:</b> ${escapeHtml(opts.captainEmail)}<br>
         <a href="${escapeHtml(link)}" style="color:#3481b5">View team</a></p>
+      ${exceptions ? `<p style="margin:0 0 20px;color:#b4462f"><b>${exceptions} age exception request${exceptions > 1 ? "s" : ""} to review.</b> <a href="${escapeHtml(review)}" style="color:#3481b5">Approve or deny in the organizer portal</a></p>` : ""}
       <table role="presentation" width="100%" cellpadding="0" cellspacing="0">${rows}</table>`,
   })
-  await sendEmailsPaced(to.map((addr) => ({ to: addr, subject: `New team registration: ${opts.teamName} (${opts.comp.title})`, html })))
+  await sendEmailsPaced(to.map((addr) => ({ to: addr, subject: `${exceptions ? "[Age exception] " : ""}New team registration: ${opts.teamName} (${opts.comp.title})`, html })))
 }
 
 export async function addRosterMembers(
@@ -244,12 +258,14 @@ export async function addRosterMembers(
   teamId: string,
   input: MemberInput[]
 ): Promise<{ added: number; invitesCount: number }> {
-  if (!input.length) throw new UserError("Add at least one member.")
-  const members = input.map((m, i) => cleanMember(m, i, "member"))
-  assertNoDuplicateEmails(members)
+  if (!Array.isArray(input) || !input.length) throw new UserError("Add at least one member.")
+  if (input.length > MAX_TEAM_SIZE) throw new UserError(`A team can have at most ${MAX_TEAM_SIZE} members.`)
 
-  const { team, invites } = await withTransaction(async (db) => {
+  const { team, invites, members } = await withTransaction(async (db) => {
     const team = await loadCaptainTeam(teamId, user.id, db)
+    const rule = await competitionAgeRule(team.competition_id, db)
+    const members = input.map((m, i) => cleanMember(m, input.length > 1 ? `Teammate ${i + 1}` : "Teammate", "member", rule))
+    assertNoDuplicateEmails(members)
     const { rows: countRows } = await db.query<{ n: string }>(`select count(*) n from team_members where team_id = $1`, [team.id])
     const remaining = Math.max(0, MAX_TEAM_SIZE - Number(countRows[0].n))
     if (remaining === 0) throw new UserError(`Team is already full (max ${MAX_TEAM_SIZE}).`)
@@ -267,13 +283,14 @@ export async function addRosterMembers(
     const targets: { team_member_id: string; email: string }[] = []
     for (const m of members) {
       const { rows } = await db.query<{ id: string }>(
-        `insert into team_members (team_id, user_id, role, full_name, date_of_birth, handle, phone, member_email)
-         values ($1, null, 'member', $2, $3, $4, $5, $6) returning id`,
-        [team.id, m.full_name, m.date_of_birth, m.handle || null, m.phone || null, m.email || null]
+        `insert into team_members (team_id, user_id, role, full_name, date_of_birth, handle, phone, member_email, age_exception, age_exception_note)
+         values ($1, null, 'member', $2, $3, $4, $5, $6, $7, $8) returning id`,
+        [team.id, m.full_name, m.date_of_birth, m.handle || null, m.phone || null, m.email || null,
+         m.age_exception_note ? "requested" : null, m.age_exception_note || null]
       )
       if (m.email) targets.push({ team_member_id: rows[0].id, email: m.email })
     }
-    return { team, invites: await insertInvites(db, team, user.id, targets) }
+    return { team, members, invites: await insertInvites(db, team, user.id, targets) }
   })
 
   await sendEmailsPaced(
@@ -451,13 +468,16 @@ export async function updateProfile(
   user: SessionUser,
   input: { full_name: string; handle: string; phone: string; date_of_birth: string }
 ): Promise<void> {
-  const full_name = input.full_name.trim().slice(0, 120)
-  const handle = input.handle.trim().replace(/^@/, "").slice(0, 60)
-  const phone = input.phone.trim().slice(0, 40)
-  const dob = input.date_of_birth.trim()
-  if (dob && (!/^\d{4}-\d{2}-\d{2}$/.test(dob) || Number.isNaN(new Date(dob).getTime()) || new Date(dob) >= new Date())) {
-    throw new UserError("Enter a valid date of birth.")
+  // Everything on the profile is optional, but whatever is filled in must be valid.
+  const checks = {
+    full_name: String(input.full_name ?? "").trim() ? checkFullName(input.full_name) : ({ ok: true, value: "" } as const),
+    handle: checkHandle(input.handle),
+    phone: checkPhone(input.phone),
+    dob: checkDob(input.date_of_birth, { required: false }),
   }
+  for (const r of Object.values(checks)) if (!r.ok) throw new UserError(r.error)
+  const v = (k: keyof typeof checks) => (checks[k] as { value: string }).value
+  const [full_name, handle, phone, dob] = [v("full_name"), v("handle"), v("phone"), v("dob")]
   try {
     await query(
       `insert into profiles (id, full_name, handle, phone, date_of_birth)

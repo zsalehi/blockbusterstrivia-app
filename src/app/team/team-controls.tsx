@@ -12,6 +12,8 @@ import {
 } from '@/app/teams/actions'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
+import { AgeFields, EmailInput, exceptionReasonFor, FullNameInput, PhoneInput, type AgeException } from '@/components/checked-input'
+import { checkMember, type AgeRule } from '@/lib/validation'
 
 function useAction() {
   const router = useRouter()
@@ -131,11 +133,12 @@ export function LogoForm({ teamId, initialUrl }: { teamId: string; initialUrl: s
   )
 }
 
-type Mate = { full_name: string; date_of_birth: string; email: string; phone: string }
-const blank: Mate = { full_name: '', date_of_birth: '', email: '', phone: '' }
+type Mate = { full_name: string; date_of_birth: string; email: string; phone: string; exception: AgeException }
+const blank: Mate = { full_name: '', date_of_birth: '', email: '', phone: '', exception: { requested: false, reason: '' } }
 
-export function AddMembersForm({ teamId, slotsLeft }: { teamId: string; slotsLeft: number }) {
+export function AddMembersForm({ teamId, slotsLeft, ageRule }: { teamId: string; slotsLeft: number; ageRule: AgeRule }) {
   const [mates, setMates] = useState<Mate[]>([{ ...blank }])
+  const [problem, setProblem] = useState<string | null>(null)
   const { pending, error, done, run } = useAction()
   const set = (i: number, patch: Partial<Mate>) => setMates((m) => m.map((x, j) => (j === i ? { ...x, ...patch } : x)))
 
@@ -144,15 +147,26 @@ export function AddMembersForm({ teamId, slotsLeft }: { teamId: string; slotsLef
       className="space-y-4"
       onSubmit={(e) => {
         e.preventDefault()
-        run(() => addMembersAction(teamId, mates), 'Added. Invites are on their way.', () => setMates([{ ...blank }]))
+        const payload = mates.map(({ exception, ...m }) => ({ ...m, age_exception_reason: exceptionReasonFor(m.date_of_birth, ageRule, exception) }))
+        const bad = payload.map((m, i) => checkMember(m, mates.length > 1 ? `Teammate ${i + 1}` : 'Teammate', ageRule)).find((r) => !r.ok)
+        setProblem(bad && !bad.ok ? bad.error : null)
+        if (bad) return
+        run(() => addMembersAction(teamId, payload), 'Added. Invites are on their way.', () => setMates([{ ...blank }]))
       }}
     >
       {mates.map((m, i) => (
         <div key={i} className="grid gap-3 sm:grid-cols-2">
-          <Input required placeholder="Full name" value={m.full_name} onChange={(e) => set(i, { full_name: e.target.value })} />
-          <Input required type="date" aria-label="Date of birth" value={m.date_of_birth} onChange={(e) => set(i, { date_of_birth: e.target.value })} />
-          <Input type="email" placeholder="Email (to send the invite)" value={m.email} onChange={(e) => set(i, { email: e.target.value })} />
-          <Input type="tel" placeholder="Phone" value={m.phone} onChange={(e) => set(i, { phone: e.target.value })} />
+          <FullNameInput required placeholder="Full name" value={m.full_name} onChange={(e) => set(i, { full_name: e.target.value })} onCleanValue={(v) => set(i, { full_name: v })} />
+          <AgeFields
+            rule={ageRule}
+            showLabel={false}
+            value={m.date_of_birth}
+            onValueChange={(v) => set(i, { date_of_birth: v })}
+            exception={m.exception}
+            onExceptionChange={(x) => set(i, { exception: x })}
+          />
+          <EmailInput placeholder="Email (to send the invite)" value={m.email} onChange={(e) => set(i, { email: e.target.value })} onCleanValue={(v) => set(i, { email: v })} />
+          <PhoneInput placeholder="Phone" value={m.phone} onChange={(e) => set(i, { phone: e.target.value })} onCleanValue={(v) => set(i, { phone: v })} />
         </div>
       ))}
       <div className="flex flex-wrap items-center gap-3">
@@ -163,7 +177,7 @@ export function AddMembersForm({ teamId, slotsLeft }: { teamId: string; slotsLef
         )}
         <Button type="submit" disabled={pending}>{pending ? 'Adding…' : 'Add & send invites'}</Button>
       </div>
-      <Status error={error} done={done} />
+      <Status error={problem ?? error} done={problem ? null : done} />
     </form>
   )
 }

@@ -4,6 +4,7 @@ import { useState } from 'react'
 import {
   addOrgMemberAction,
   createCompetitionAction,
+  decideAgeExceptionAction,
   deleteCompetitionAction,
   removeOrgMemberAction,
   removeTeamAction,
@@ -47,6 +48,8 @@ export type CompetitionValues = {
   status: string
   format: string
   max_teams: number | null
+  min_age: number | null
+  max_age: number | null
   registration_opens: string | null
   registration_closes: string | null
   start_at: string | null
@@ -60,6 +63,8 @@ export function CompetitionForm({ orgId, competitionId, values }: { orgId?: stri
     status: values?.status ?? 'upcoming',
     format: values?.format ?? 'single_elim',
     max_teams: values?.max_teams ? String(values.max_teams) : '',
+    min_age: values?.min_age ? String(values.min_age) : '',
+    max_age: values?.max_age ? String(values.max_age) : '',
     registration_opens: toLocalInput(values?.registration_opens),
     registration_closes: toLocalInput(values?.registration_closes),
     start_at: toLocalInput(values?.start_at),
@@ -95,7 +100,7 @@ export function CompetitionForm({ orgId, competitionId, values }: { orgId?: stri
           onChange={(e) => set({ description: e.target.value })}
         />
       </Field>
-      <div className="grid gap-4 sm:grid-cols-3">
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
         <Field label="Status">
           <select className={selectClass} value={v.status} onChange={(e) => set({ status: e.target.value })}>
             {STATUSES.map(([val, label]) => <option key={val} value={val}>{label}</option>)}
@@ -108,6 +113,12 @@ export function CompetitionForm({ orgId, competitionId, values }: { orgId?: stri
         </Field>
         <Field label="Maximum teams" hint="Blank means no limit.">
           <Input type="number" min={1} max={1000} value={v.max_teams} onChange={(e) => set({ max_teams: e.target.value })} />
+        </Field>
+        <Field label="Minimum age" hint="Younger players can request an exception.">
+          <Input type="number" inputMode="numeric" min={1} max={99} value={v.min_age} onChange={(e) => set({ min_age: e.target.value })} />
+        </Field>
+        <Field label="Maximum age" hint="Hard limit, no exceptions.">
+          <Input type="number" inputMode="numeric" min={1} max={99} value={v.max_age} onChange={(e) => set({ max_age: e.target.value })} />
         </Field>
       </div>
       <div className="grid gap-4 sm:grid-cols-2">
@@ -125,7 +136,7 @@ export function CompetitionForm({ orgId, competitionId, values }: { orgId?: stri
         </Field>
       </div>
       <p className="text-xs text-muted-foreground">
-        Times are in {APP_TIMEZONE.replace('_', ' ')} time. Leave both registration dates blank to keep registration always open.
+        Times are in {APP_TIMEZONE.replace('_', ' ')} time. Ages are checked on the start date (or the day someone registers, if there’s no start date). Blank ages mean no limit. Leave both registration dates blank to keep registration always open.
       </p>
       <div className="flex items-center gap-3">
         <Button type="submit" disabled={pending}>{competitionId ? 'Save changes' : 'Create competition'}</Button>
@@ -151,6 +162,39 @@ export function RemoveTeamButton({ teamId, name }: { teamId: string; name: strin
       </Button>
       <Status error={error} done={null} />
     </>
+  )
+}
+
+export function AgeExceptionButtons({ memberId, name, status }: { memberId: string; name: string; status: 'requested' | 'approved' | 'denied' }) {
+  const { pending, error, run } = useAction()
+  return (
+    <span className="inline-flex flex-wrap items-center gap-1">
+      {status !== 'approved' && (
+        <Button
+          variant="outline"
+          size="sm"
+          disabled={pending}
+          onClick={() => {
+            if (confirm(`Approve an age exception for ${name}?`)) run(() => decideAgeExceptionAction(memberId, 'approved'))
+          }}
+        >
+          Approve
+        </Button>
+      )}
+      {status !== 'denied' && (
+        <Button
+          variant="ghost"
+          size="sm"
+          disabled={pending}
+          onClick={() => {
+            if (confirm(`Deny the age exception for ${name}? Their captain will see it wasn’t approved.`)) run(() => decideAgeExceptionAction(memberId, 'denied'))
+          }}
+        >
+          Deny
+        </Button>
+      )}
+      <Status error={error} done={null} />
+    </span>
   )
 }
 
