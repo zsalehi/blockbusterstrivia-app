@@ -4,8 +4,9 @@ import { useState } from "react";
 import Link from "next/link";
 import { Menu, X } from "lucide-react";
 import { MobileAccountLinks } from "@/components/account-menu";
+import { externalProps, type NavLink } from "@/lib/links";
 
-export function MobileNav({ links }: { links: { href: string; label: string }[] }) {
+export function MobileNav({ links }: { links: NavLink[] }) {
   const [open, setOpen] = useState(false);
 
   return (
@@ -27,6 +28,7 @@ export function MobileNav({ links }: { links: { href: string; label: string }[] 
               <Link
                 key={link.href}
                 href={link.href}
+                {...(link.external ? externalProps : {})}
                 onClick={() => setOpen(false)}
                 className="border-b border-border py-3 text-sm font-medium text-muted-foreground last:border-b-0 hover:text-foreground"
               >

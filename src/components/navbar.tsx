@@ -3,11 +3,7 @@ import { Logo } from "@/components/logo";
 import { Button } from "@/components/ui/button";
 import { MobileNav } from "@/components/mobile-nav";
 import { AccountMenu } from "@/components/account-menu";
-
-const LINKS = [
-  { href: "/competitions", label: "Competitions" },
-  { href: "/schedule", label: "Schedule" },
-];
+import { MAIN_LINKS, externalProps } from "@/lib/links";
 
 export default function Navbar() {
   return (
@@ -18,10 +14,11 @@ export default function Navbar() {
         </Link>
 
         <nav className="hidden items-center gap-7 md:flex">
-          {LINKS.map((link) => (
+          {MAIN_LINKS.map((link) => (
             <Link
               key={link.href}
               href={link.href}
+              {...(link.external ? externalProps : {})}
               className="font-display text-lg tracking-wider text-muted-foreground transition-colors hover:text-foreground"
             >
               {link.label}
@@ -34,7 +31,7 @@ export default function Navbar() {
           <Button asChild>
             <Link href="/register-team">Register</Link>
           </Button>
-          <MobileNav links={LINKS} />
+          <MobileNav links={MAIN_LINKS} />
         </div>
       </div>
     </header>

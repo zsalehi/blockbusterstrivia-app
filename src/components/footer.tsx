@@ -1,13 +1,15 @@
 import Link from "next/link";
 import { Logo } from "@/components/logo";
+import { STORE_URL, externalProps, type NavLink } from "@/lib/links";
 
-const COLUMNS = [
+const COLUMNS: { title: string; links: NavLink[] }[] = [
   {
     title: "Navigation",
     links: [
       { href: "/", label: "Home" },
       { href: "/competitions", label: "Competitions" },
       { href: "/schedule", label: "Schedule" },
+      { href: STORE_URL, label: "Store", external: true },
       { href: "/login", label: "Login" },
     ],
   },
@@ -46,7 +48,7 @@ export default function Footer() {
               <ul className="space-y-2 text-sm text-muted-foreground">
                 {column.links.map((link) => (
                   <li key={link.href}>
-                    <Link href={link.href} className="transition-colors hover:text-foreground">
+                    <Link href={link.href} {...(link.external ? externalProps : {})} className="transition-colors hover:text-foreground">
                       {link.label}
                     </Link>
                   </li>
