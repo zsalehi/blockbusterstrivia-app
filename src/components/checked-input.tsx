@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useId, useState } from 'react'
 import Link from 'next/link'
 import { Input } from '@/components/ui/input'
 import {
@@ -35,6 +35,7 @@ type Props = InputProps & {
 export function CheckedInput({ check, onCleanValue, hideMessage = false, onChange, onBlur, ...props }: Props) {
   const [touched, setTouched] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const errorId = useId()
 
   function validate(el: HTMLInputElement) {
     const r = check(el.value)
@@ -48,12 +49,18 @@ export function CheckedInput({ check, onCleanValue, hideMessage = false, onChang
   // (e.g. ticking "request an age exception" clears the "too young" message right away).
   const live = props.value !== undefined ? check(String(props.value)) : null
   const shown = live ? (live.ok ? null : live.error) : error
+  const showMessage = touched && !!shown && !hideMessage
+  // Point at the error only while it's visible; a hidden description would still be read out.
+  const describedBy = [props['aria-describedby'], showMessage ? errorId : null].filter(Boolean).join(' ') || undefined
 
   return (
     <span className="block space-y-1">
       <Input
         {...props}
-        aria-invalid={touched && shown ? true : undefined}
+        // "false" until the person has interacted: Safari and Firefox otherwise announce an
+        // empty required field as invalid on page load.
+        aria-invalid={touched && !!shown}
+        aria-describedby={describedBy}
         ref={(el) => {
           // Also covers prefilled values the person never touches (e.g. the captain's saved profile).
           if (!el) return
@@ -75,7 +82,7 @@ export function CheckedInput({ check, onCleanValue, hideMessage = false, onChang
         }}
         onInvalid={() => setTouched(true)}
       />
-      {touched && shown && !hideMessage && <span className="block text-xs text-destructive">{shown}</span>}
+      {showMessage && <span id={errorId} className="block text-xs text-destructive">{shown}</span>}
     </span>
   )
 }
@@ -184,7 +191,7 @@ export function AgeFields({
           <label className="flex items-start gap-2">
             <input
               type="checkbox"
-              className="mt-0.5 size-4 accent-[var(--color-brand-red)]"
+              className="mt-0.5 size-4"
               checked={exception.requested}
               onChange={(e) => onExceptionChange({ ...exception, requested: e.target.checked })}
             />
@@ -194,7 +201,7 @@ export function AgeFields({
             <textarea
               required
               maxLength={300}
-              rows={2}
+              aria-label="Reason for the age exception"
               placeholder="Why should this player be allowed to play up?"
               className="border-input w-full rounded-md border bg-transparent px-3 py-2 text-sm shadow-xs outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 dark:bg-input/30"
               value={exception.reason}

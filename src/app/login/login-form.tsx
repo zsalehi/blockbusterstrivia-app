@@ -30,6 +30,12 @@ export function LoginForm({ next, initialError }: { next: string; initialError?:
       <form onSubmit={handleLogin} className="space-y-3">
         <Input
           type="email"
+          name="email"
+          aria-label="Email"
+          autoComplete="email"
+          inputMode="email"
+          autoCapitalize="none"
+          spellCheck={false}
           placeholder="you@example.com"
           value={email}
           onChange={(e) => setEmail(e.target.value)}
@@ -39,7 +45,7 @@ export function LoginForm({ next, initialError }: { next: string; initialError?:
           {sending ? 'Sending…' : 'Send Magic Link'}
         </Button>
       </form>
-      {status && <p className="text-sm text-muted-foreground">{status}</p>}
+      <p role="status" className="text-sm text-muted-foreground empty:hidden">{status}</p>
     </>
   )
 }

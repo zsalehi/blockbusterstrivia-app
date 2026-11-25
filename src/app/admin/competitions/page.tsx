@@ -1,6 +1,6 @@
 import type { Metadata } from 'next'
 import Link from 'next/link'
-import { format } from 'date-fns'
+import { formatDate } from '@/lib/tz'
 import { query } from '@/lib/db'
 import { requireAdminPage } from '@/lib/authz'
 
@@ -18,10 +18,10 @@ export default async function AdminCompetitions() {
   return (
     <div className="space-y-6">
       <h1 className="text-3xl font-bold">All competitions</h1>
-      <div className="overflow-x-auto rounded-xl border bg-card">
+      <div tabIndex={0} role="region" aria-label="All competitions" className="overflow-x-auto rounded-xl border bg-card">
         <table className="w-full text-left text-sm">
           <thead className="border-b text-muted-foreground">
-            <tr><th className="p-3">Competition</th><th className="p-3">Organization</th><th className="p-3">Status</th><th className="p-3">Starts</th><th className="p-3">Teams</th></tr>
+            <tr><th scope="col" className="p-3">Competition</th><th scope="col" className="p-3">Organization</th><th scope="col" className="p-3">Status</th><th scope="col" className="p-3">Starts</th><th scope="col" className="p-3">Teams</th></tr>
           </thead>
           <tbody className="divide-y">
             {rows.map((c) => (
@@ -29,7 +29,7 @@ export default async function AdminCompetitions() {
                 <td className="p-3"><Link href={`/organizer/competitions/${c.id}`} className="font-medium hover:underline">{c.title}</Link></td>
                 <td className="p-3 text-muted-foreground">{c.org ?? '—'}</td>
                 <td className="p-3 capitalize">{c.status}</td>
-                <td className="p-3 text-muted-foreground">{c.start_at ? format(c.start_at, 'MMM d, yyyy') : '—'}</td>
+                <td className="p-3 text-muted-foreground">{c.start_at ? formatDate(c.start_at) : '—'}</td>
                 <td className="p-3">{c.teams}{c.max_teams ? ` / ${c.max_teams}` : ''}</td>
               </tr>
             ))}

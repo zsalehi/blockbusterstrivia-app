@@ -34,7 +34,7 @@ export default function Footer() {
       <div className="mx-auto max-w-6xl px-4 py-14">
         <div className="grid grid-cols-2 gap-10 md:grid-cols-4">
           <div className="col-span-2 md:col-span-1">
-            <Logo variant="lockup" className="w-[190px]" />
+            <Logo variant="lockup" lazy className="w-[190px]" />
             <p className="mt-4 max-w-xs text-sm text-muted-foreground">
               The largest trivia competition of its kind in the Toronto Shi&apos;a community.
             </p>

@@ -2,7 +2,7 @@
 import type { Metadata } from 'next'
 import Link from 'next/link'
 import { query } from '@/lib/db'
-import { format } from 'date-fns'
+import { formatDate } from '@/lib/tz'
 import { Button } from '@/components/ui/button'
 
 export const metadata: Metadata = { title: 'Competitions' }
@@ -73,13 +73,13 @@ export default async function CompetitionsPage() {
                 {comp.start_at && (
                   <span>
                     <strong>Starts:</strong>{' '}
-                    {format(new Date(comp.start_at), 'MMM d, yyyy')}
+                    {formatDate(comp.start_at)}
                   </span>
                 )}
                 {comp.end_at && (
                   <span>
                     <strong>Ends:</strong>{' '}
-                    {format(new Date(comp.end_at), 'MMM d, yyyy')}
+                    {formatDate(comp.end_at)}
                   </span>
                 )}
               </div>

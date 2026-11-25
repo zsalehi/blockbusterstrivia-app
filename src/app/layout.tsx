@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Bebas_Neue, Barlow } from "next/font/google";
 import localFont from "next/font/local";
 import "./globals.css";
@@ -36,10 +36,16 @@ export const metadata: Metadata = {
   description: "The largest Blockbusters-style trivia competition in the Toronto Shi'a community. Register your team today.",
 };
 
+// Emits <meta name="color-scheme" content="dark"> so the first paint is already dark (no white flash).
+export const viewport: Viewport = {
+  colorScheme: "dark",
+  themeColor: "#121923",
+};
+
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en" className={`dark ${homestead.variable} ${bebas.variable} ${barlow.variable}`}>
-      <body className="flex min-h-screen flex-col bg-background font-sans text-foreground antialiased">
+      <body className="flex min-h-dvh flex-col bg-background font-sans text-foreground antialiased">
         <Navbar />
         <main className="flex-1">{children}</main>
         <Footer />

@@ -1,7 +1,7 @@
 import type { Metadata } from 'next'
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
-import { format } from 'date-fns'
+import { formatDate } from '@/lib/tz'
 import { getSessionUser } from '@/lib/session'
 import { query, queryOne } from '@/lib/db'
 import { isRegistrationOpen } from '@/lib/competition'
@@ -50,7 +50,7 @@ export default async function CompetitionDetailPage({ params }: { params: Promis
   return (
     <>
       <PageHeader
-        eyebrow={comp.start_at ? `Starts ${format(comp.start_at, 'MMMM d, yyyy')}` : 'Competition'}
+        eyebrow={comp.start_at ? `Starts ${formatDate(comp.start_at, 'longDate')}` : 'Competition'}
         title={comp.title}
         lead={comp.description ?? undefined}
       />

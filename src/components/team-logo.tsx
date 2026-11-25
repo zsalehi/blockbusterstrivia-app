@@ -16,5 +16,5 @@ export function TeamLogo({ url, name, className = "size-10" }: { url: string | n
     )
   }
   // eslint-disable-next-line @next/next/no-img-element -- logos are arbitrary captain-supplied URLs
-  return <img src={url} alt="" onError={() => setFailedUrl(url)} className={`${className} shrink-0 rounded-lg bg-secondary object-cover`} />
+  return <img src={url} alt="" loading="lazy" onError={() => setFailedUrl(url)} className={`${className} shrink-0 rounded-lg bg-secondary object-cover`} />
 }

@@ -1,7 +1,7 @@
 import Link from 'next/link'
 import { query, queryOne } from '@/lib/db'
 import { requireAdminPage } from '@/lib/authz'
-import { format } from 'date-fns'
+import { formatDate } from '@/lib/tz'
 
 export const dynamic = 'force-dynamic'
 
@@ -67,7 +67,7 @@ export default async function AdminHome() {
                   <p className="truncate font-medium">{t.name}</p>
                   <Link href={`/organizer/competitions/${t.competition_id}`} className="text-xs text-muted-foreground hover:underline">{t.competition}</Link>
                 </div>
-                <span className="shrink-0 text-sm text-muted-foreground">{format(t.created_at, 'MMM d')}</span>
+                <span className="shrink-0 text-sm text-muted-foreground">{formatDate(t.created_at, 'monthDay')}</span>
               </li>
             ))}
             {!recent.length && <li className="p-3 text-muted-foreground">No teams yet.</li>}

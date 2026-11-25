@@ -99,10 +99,10 @@ export default async function ManageCompetition({ params }: { params: Promise<{ 
               </div>
               <RemoveTeamButton teamId={teamId} name={t.name} />
             </div>
-            <div className="mt-3 overflow-x-auto">
+            <div tabIndex={0} role="region" aria-label={`${t.name} roster`} className="mt-3 overflow-x-auto">
               <table className="w-full text-left text-sm">
                 <thead className="text-muted-foreground">
-                  <tr><th className="py-1 pr-3">Name</th><th className="py-1 pr-3">Role</th><th className="py-1 pr-3">Email</th><th className="py-1 pr-3">Phone</th><th className="py-1 pr-3">Age</th><th className="py-1">Status</th></tr>
+                  <tr><th scope="col" className="py-1 pr-3">Name</th><th scope="col" className="py-1 pr-3">Role</th><th scope="col" className="py-1 pr-3">Email</th><th scope="col" className="py-1 pr-3">Phone</th><th scope="col" className="py-1 pr-3">Age</th><th scope="col" className="py-1">Status</th></tr>
                 </thead>
                 <tbody className="divide-y">
                   {t.members.map((m) => (
@@ -121,7 +121,7 @@ export default async function ManageCompetition({ params }: { params: Promise<{ 
                           <div className="flex flex-wrap items-center gap-x-3 gap-y-1 rounded-md border border-border bg-background/60 px-3 py-2 text-xs">
                             <span className={EXCEPTION_TONE[m.age_exception]}>Age exception {m.age_exception}</span>
                             {m.age_exception_note && <span className="text-muted-foreground">“{m.age_exception_note}”</span>}
-                            <span className="ml-auto"><AgeExceptionButtons memberId={m.member_id} name={m.full_name} status={m.age_exception} /></span>
+                            <div className="ml-auto"><AgeExceptionButtons memberId={m.member_id} name={m.full_name} status={m.age_exception} /></div>
                           </div>
                         </td>
                       </tr>

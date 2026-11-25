@@ -1,0 +1,50 @@
+<!doctype html>
+<!--
+  Store hero background in the style of the blockbusterstrivia.com homepage hero
+  (src/app/page.tsx): a faint honeycomb (HexPattern) plus a blurred red aura at the top.
+  Everything is drawn at 2x the site's sizes for a sharp 2880x1440 image.
+  Open with ?theme=light or ?theme=dark; render.mjs screenshots both.
+-->
+<html>
+<head>
+<meta charset="utf-8">
+<style>
+  :root { --r: 56px; }
+  html, body { margin: 0; }
+  .hero { position: relative; width: 2880px; height: 1440px; overflow: hidden; background: var(--bg); }
+  .dark  { --bg: #121923; --line: rgb(255 255 255 / 0.04); --a: 0.16; }
+  .light { --bg: #f6f4ef; --line: rgb(18 25 35 / 0.07);   --a: 0.20; }
+  svg { position: absolute; inset: 0; width: 100%; height: 100%; }
+  /* The site uses a blurred red pill (bg-primary/10 blur-3xl) half above the top edge. A blur this
+     large gets clipped into hard edges in a screenshot, so the same glow is drawn as a soft gradient. */
+  .aura {
+    position: absolute; inset: 0;
+    background: radial-gradient(ellipse 1000px 560px at 50% 0,
+      rgb(216 85 69 / var(--a)) 0%,
+      rgb(216 85 69 / calc(var(--a) * 0.75)) 30%,
+      rgb(216 85 69 / calc(var(--a) * 0.35)) 60%,
+      rgb(216 85 69 / 0) 100%);
+  }
+</style>
+</head>
+<body>
+<div class="hero" id="hero">
+  <svg aria-hidden="true"><defs><pattern id="honeycomb" patternUnits="userSpaceOnUse"></pattern></defs>
+    <rect width="100%" height="100%" fill="url(#honeycomb)"/></svg>
+  <div class="aura"></div>
+</div>
+<script>
+  const theme = new URLSearchParams(location.search).get("theme") || "dark"
+  document.getElementById("hero").classList.add(theme)
+  // Same geometry as HexPattern in src/components/hex-grid.tsx, doubled (r = 56, 2px lines).
+  const r = 56, h = Math.sqrt(3) * r
+  const pts = [[r, 0], [r / 2, h / 2], [-r / 2, h / 2], [-r, 0], [-r / 2, -h / 2], [r / 2, -h / 2]]
+    .map(([x, y]) => `${x + 1.5 * r},${y + h}`).join(" ")
+  const p = document.getElementById("honeycomb")
+  p.setAttribute("width", 3 * r); p.setAttribute("height", 2 * h)
+  const line = getComputedStyle(document.getElementById("hero")).getPropertyValue("--line")
+  p.innerHTML = ["", `translate(${-1.5 * r} ${-h})`, `translate(${1.5 * r} ${-h})`]
+    .map((t) => `<polygon points="${pts}" fill="none" stroke="${line}" stroke-width="2" transform="${t}"/>`).join("")
+</script>
+</body>
+</html>

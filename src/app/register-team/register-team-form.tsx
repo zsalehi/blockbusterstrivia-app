@@ -25,6 +25,12 @@ function Field({ label, children, hint }: { label: string; children: React.React
 
 type CaptainDefaults = Omit<Member, 'exception'>
 
+// Bring the error banner into view; jump instead of gliding for people who asked for reduced motion.
+function scrollToTop() {
+  const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches
+  window.scrollTo({ top: 0, behavior: reduce ? 'instant' : 'smooth' })
+}
+
 export function RegisterTeamForm({ competitionId, captain, ageRule }: { competitionId: string; captain: CaptainDefaults; ageRule: AgeRule }) {
   const router = useRouter()
   const [pending, startTransition] = useTransition()
@@ -49,7 +55,7 @@ export function RegisterTeamForm({ competitionId, captain, ageRule }: { competit
     ].find((r) => !r.ok)
     if (problem && !problem.ok) {
       setError(problem.error)
-      window.scrollTo({ top: 0, behavior: 'smooth' })
+      scrollToTop()
       return
     }
     startTransition(async () => {
@@ -60,7 +66,7 @@ export function RegisterTeamForm({ competitionId, captain, ageRule }: { competit
       })
       if (!res.ok) {
         setError(res.error)
-        window.scrollTo({ top: 0, behavior: 'smooth' })
+        scrollToTop()
         return
       }
       router.push(`/team?id=${res.teamId}&registered=1`)

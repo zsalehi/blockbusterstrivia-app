@@ -7,13 +7,13 @@ import { MAIN_LINKS, externalProps } from "@/lib/links";
 
 export default function Navbar() {
   return (
-    <header className="sticky top-0 z-50 border-b border-border bg-background/90 backdrop-blur">
-      <div className="relative mx-auto flex max-w-6xl items-center justify-between gap-4 px-4 py-2.5">
+    <header className="sticky top-0 z-50 border-b border-border bg-background/90 backdrop-blur [anchor-name:--site-header]">
+      <div className="mx-auto flex max-w-6xl items-center justify-between gap-4 px-4 py-2.5">
         <Link href="/" aria-label="BlockBusters Trivia home" className="shrink-0">
           <Logo className="w-[140px] sm:w-[178px]" />
         </Link>
 
-        <nav className="hidden items-center gap-7 md:flex">
+        <nav aria-label="Main" className="hidden items-center gap-7 md:flex">
           {MAIN_LINKS.map((link) => (
             <Link
               key={link.href}

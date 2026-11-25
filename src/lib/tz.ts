@@ -15,6 +15,23 @@ function parts(date: Date): Record<string, string> {
   return Object.fromEntries(fmt.formatToParts(date).map((p) => [p.type, p.value]))
 }
 
+const DISPLAY = {
+  date: { month: "short", day: "numeric", year: "numeric" }, // Nov 25, 2026
+  longDate: { month: "long", day: "numeric", year: "numeric" }, // November 25, 2026
+  monthDay: { month: "short", day: "numeric" }, // Nov 25
+  dateTime: { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" }, // Nov 25, 9:30 p.m.
+} satisfies Record<string, Intl.DateTimeFormatOptions>
+
+const displayFormats = Object.fromEntries(
+  Object.entries(DISPLAY).map(([k, opts]) => [k, new Intl.DateTimeFormat("en-CA", { ...opts, timeZone: APP_TIMEZONE })])
+) as Record<keyof typeof DISPLAY, Intl.DateTimeFormat>
+
+// Human-readable date in APP_TIMEZONE. Server components run in the container's zone (UTC),
+// so formatting without an explicit zone would show an evening Toronto start as the next day.
+export function formatDate(value: Date | string, style: keyof typeof DISPLAY = "date"): string {
+  return displayFormats[style].format(new Date(value))
+}
+
 // ISO instant -> "YYYY-MM-DDTHH:mm" in APP_TIMEZONE (the value of a datetime-local input).
 export function toLocalInput(value: Date | string | null | undefined): string {
   if (!value) return ""

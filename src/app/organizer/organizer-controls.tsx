@@ -13,6 +13,7 @@ import {
 } from './actions'
 import { Status, useAction } from '@/components/action-ui'
 import { Button } from '@/components/ui/button'
+import { ConfirmButton } from '@/components/confirm-button'
 import { Input } from '@/components/ui/input'
 import { APP_TIMEZONE, fromLocalInput, toLocalInput } from '@/lib/tz'
 
@@ -95,7 +96,7 @@ export function CompetitionForm({ orgId, competitionId, values }: { orgId?: stri
       </Field>
       <Field label="Description" hint="Shown on the public competition page.">
         <textarea
-          className="border-input min-h-24 w-full rounded-md border bg-transparent px-3 py-2 text-sm shadow-xs outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 dark:bg-input/30"
+          className="border-input w-full rounded-md border bg-transparent px-3 py-2 text-sm shadow-xs outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 dark:bg-input/30"
           value={v.description}
           onChange={(e) => set({ description: e.target.value })}
         />
@@ -150,16 +151,16 @@ export function RemoveTeamButton({ teamId, name }: { teamId: string; name: strin
   const { pending, error, run } = useAction()
   return (
     <>
-      <Button
+      <ConfirmButton
         variant="ghost"
         size="sm"
         disabled={pending}
-        onClick={() => {
-          if (confirm(`Remove team "${name}" from this competition? Its roster and invites are deleted.`)) run(() => removeTeamAction(teamId))
-        }}
+        message={`Remove team "${name}" from this competition? Its roster and invites are deleted.`}
+        confirmLabel="Remove team"
+        onConfirm={() => run(() => removeTeamAction(teamId))}
       >
         Remove team
-      </Button>
+      </ConfirmButton>
       <Status error={error} done={null} />
     </>
   )
@@ -168,33 +169,34 @@ export function RemoveTeamButton({ teamId, name }: { teamId: string; name: strin
 export function AgeExceptionButtons({ memberId, name, status }: { memberId: string; name: string; status: 'requested' | 'approved' | 'denied' }) {
   const { pending, error, run } = useAction()
   return (
-    <span className="inline-flex flex-wrap items-center gap-1">
+    <div className="inline-flex flex-wrap items-center gap-1">
       {status !== 'approved' && (
-        <Button
+        <ConfirmButton
           variant="outline"
           size="sm"
           disabled={pending}
-          onClick={() => {
-            if (confirm(`Approve an age exception for ${name}?`)) run(() => decideAgeExceptionAction(memberId, 'approved'))
-          }}
+          message={`Approve an age exception for ${name}?`}
+          confirmLabel="Approve"
+          destructive={false}
+          onConfirm={() => run(() => decideAgeExceptionAction(memberId, 'approved'))}
         >
           Approve
-        </Button>
+        </ConfirmButton>
       )}
       {status !== 'denied' && (
-        <Button
+        <ConfirmButton
           variant="ghost"
           size="sm"
           disabled={pending}
-          onClick={() => {
-            if (confirm(`Deny the age exception for ${name}? Their captain will see it wasn’t approved.`)) run(() => decideAgeExceptionAction(memberId, 'denied'))
-          }}
+          message={`Deny the age exception for ${name}? Their captain will see it wasn’t approved.`}
+          confirmLabel="Deny"
+          onConfirm={() => run(() => decideAgeExceptionAction(memberId, 'denied'))}
         >
           Deny
-        </Button>
+        </ConfirmButton>
       )}
       <Status error={error} done={null} />
-    </span>
+    </div>
   )
 }
 
@@ -202,18 +204,18 @@ export function DeleteCompetitionButton({ competitionId, orgId }: { competitionI
   const { pending, error, run, router } = useAction()
   return (
     <div className="space-y-2">
-      <Button
+      <ConfirmButton
         variant="destructive"
         size="sm"
         disabled={pending}
-        onClick={() => {
-          if (confirm('Delete this competition? This can’t be undone.')) {
-            run(() => deleteCompetitionAction(competitionId), { refresh: false, onOk: () => router.push(orgId ? `/organizer/orgs/${orgId}` : '/organizer') })
-          }
-        }}
+        message="Delete this competition? This can’t be undone."
+        confirmLabel="Delete competition"
+        onConfirm={() =>
+          run(() => deleteCompetitionAction(competitionId), { refresh: false, onOk: () => router.push(orgId ? `/organizer/orgs/${orgId}` : '/organizer') })
+        }
       >
         Delete competition
-      </Button>
+      </ConfirmButton>
       <Status error={error} done={null} />
     </div>
   )
@@ -273,16 +275,16 @@ export function RemoveMemberButton({ orgId, userId, name }: { orgId: string; use
   const { pending, error, run } = useAction()
   return (
     <>
-      <Button
+      <ConfirmButton
         variant="ghost"
         size="sm"
         disabled={pending}
-        onClick={() => {
-          if (confirm(`Remove ${name} from this organization?`)) run(() => removeOrgMemberAction(orgId, userId))
-        }}
+        message={`Remove ${name} from this organization?`}
+        confirmLabel="Remove"
+        onConfirm={() => run(() => removeOrgMemberAction(orgId, userId))}
       >
         Remove
-      </Button>
+      </ConfirmButton>
       <Status error={error} done={null} />
     </>
   )

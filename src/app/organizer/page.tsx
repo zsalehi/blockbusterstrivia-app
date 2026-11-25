@@ -1,6 +1,6 @@
 import type { Metadata } from 'next'
 import Link from 'next/link'
-import { format } from 'date-fns'
+import { formatDate } from '@/lib/tz'
 import { query } from '@/lib/db'
 import { requireOrganizerPage } from '@/lib/authz'
 import { Button } from '@/components/ui/button'
@@ -43,7 +43,7 @@ export default async function OrganizerHome() {
                 <li key={c.id} className="flex flex-wrap items-center justify-between gap-3 p-4">
                   <div className="min-w-0">
                     <Link href={`/organizer/competitions/${c.id}`} className="font-medium hover:underline">{c.title}</Link>
-                    <p className="text-xs capitalize text-muted-foreground">{c.status}{c.start_at ? ` · starts ${format(c.start_at, 'MMM d, yyyy')}` : ''}</p>
+                    <p className="text-xs capitalize text-muted-foreground">{c.status}{c.start_at ? ` · starts ${formatDate(c.start_at)}` : ''}</p>
                   </div>
                   <span className="text-sm text-muted-foreground">{c.teams}{c.max_teams ? ` / ${c.max_teams}` : ''} teams</span>
                 </li>

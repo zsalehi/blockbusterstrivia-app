@@ -4,6 +4,7 @@ import { useState } from 'react'
 import { createOrganizationAction, deleteOrganizationAction, setPlatformRoleAction } from './actions'
 import { Status, useAction } from '@/components/action-ui'
 import { Button } from '@/components/ui/button'
+import { ConfirmButton } from '@/components/confirm-button'
 import { Input } from '@/components/ui/input'
 
 const slugify = (s: string) => s.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 60)
@@ -70,16 +71,16 @@ export function DeleteOrgButton({ orgId, name }: { orgId: string; name: string }
   const { pending, error, run } = useAction()
   return (
     <>
-      <Button
+      <ConfirmButton
         variant="ghost"
         size="sm"
         disabled={pending}
-        onClick={() => {
-          if (confirm(`Delete ${name}? This can't be undone.`)) run(() => deleteOrganizationAction(orgId))
-        }}
+        message={`Delete ${name}? This can't be undone.`}
+        confirmLabel="Delete"
+        onConfirm={() => run(() => deleteOrganizationAction(orgId))}
       >
         Delete
-      </Button>
+      </ConfirmButton>
       <Status error={error} done={null} />
     </>
   )
@@ -89,17 +90,16 @@ export function RoleButton({ userId, name, isAdmin }: { userId: string; name: st
   const { pending, error, run } = useAction()
   return (
     <div className="flex items-center gap-2">
-      <Button
+      <ConfirmButton
         variant={isAdmin ? 'outline' : 'ghost'}
         size="sm"
         disabled={pending}
-        onClick={() => {
-          const msg = isAdmin ? `Remove admin access from ${name}?` : `Make ${name} a platform admin? They'll see every competition and all player contact details.`
-          if (confirm(msg)) run(() => setPlatformRoleAction(userId, isAdmin ? 'player' : 'admin'))
-        }}
+        message={isAdmin ? `Remove admin access from ${name}?` : `Make ${name} a platform admin? They'll see every competition and all player contact details.`}
+        confirmLabel={isAdmin ? 'Remove admin' : 'Make admin'}
+        onConfirm={() => run(() => setPlatformRoleAction(userId, isAdmin ? 'player' : 'admin'))}
       >
         {isAdmin ? 'Remove admin' : 'Make admin'}
-      </Button>
+      </ConfirmButton>
       <Status error={error} done={null} />
     </div>
   )

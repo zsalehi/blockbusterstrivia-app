@@ -1,7 +1,7 @@
 import type { Metadata } from 'next'
 import { query } from '@/lib/db'
 import { requireAdminPage } from '@/lib/authz'
-import { format } from 'date-fns'
+import { formatDate } from '@/lib/tz'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { RoleButton } from '../admin-controls'
@@ -37,7 +37,7 @@ export default async function AdminUsers({ searchParams }: { searchParams: Promi
               <p className="truncate font-medium">
                 {u.name} {u.role === 'admin' && <span className="ml-1 rounded bg-primary/15 px-1.5 py-0.5 text-xs text-primary">admin</span>}
               </p>
-              <p className="truncate text-sm text-muted-foreground">{u.email} · joined {format(u.created_at, 'MMM d, yyyy')}</p>
+              <p className="truncate text-sm text-muted-foreground">{u.email} · joined {formatDate(u.created_at)}</p>
               {u.orgs && <p className="text-xs text-muted-foreground">{u.orgs}</p>}
             </div>
             {u.id !== viewer.user.id && <RoleButton userId={u.id} name={u.name} isAdmin={u.role === 'admin'} />}

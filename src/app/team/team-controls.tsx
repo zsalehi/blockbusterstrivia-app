@@ -11,6 +11,7 @@ import {
   type ActionResult,
 } from '@/app/teams/actions'
 import { Button } from '@/components/ui/button'
+import { ConfirmButton } from '@/components/confirm-button'
 import { Input } from '@/components/ui/input'
 import { AgeFields, EmailInput, exceptionReasonFor, FullNameInput, PhoneInput, type AgeException } from '@/components/checked-input'
 import { checkMember, type AgeRule } from '@/lib/validation'
@@ -62,16 +63,16 @@ export function RemoveMemberButton({ memberId, name }: { memberId: string; name:
   const { pending, error, run } = useAction()
   return (
     <>
-      <Button
+      <ConfirmButton
         variant="ghost"
         size="sm"
         disabled={pending}
-        onClick={() => {
-          if (confirm(`Remove ${name} from the team?`)) run(() => removeMemberAction(memberId))
-        }}
+        message={`Remove ${name} from the team?`}
+        confirmLabel="Remove"
+        onConfirm={() => run(() => removeMemberAction(memberId))}
       >
         Remove
-      </Button>
+      </ConfirmButton>
       <Status error={error} done={null} />
     </>
   )
