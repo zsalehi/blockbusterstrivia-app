@@ -33,7 +33,7 @@ export const metadata: Metadata = {
     default: "BlockBusters Trivia Competition",
     template: "%s · BlockBusters Trivia Competition",
   },
-  description: "The largest Blockbusters-style trivia competition in the Toronto Shi'a community. Register your team today.",
+  description: "The largest BlockBusters-style trivia competition in the Toronto Shi'a community. Register your team today.",
 };
 
 // Emits <meta name="color-scheme" content="dark"> so the first paint is already dark (no white flash).

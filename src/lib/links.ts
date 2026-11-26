@@ -1,7 +1,7 @@
 // Site-wide navigation. External links open in a new tab so people don't lose their place here.
 export type NavLink = { href: string; label: string; external?: boolean }
 
-export const STORE_URL = "https://blockbusters-trivia.square.site/s/shop"
+export const STORE_URL = "https://blockbusters-trivia.square.site"
 
 export const MAIN_LINKS: NavLink[] = [
   { href: "/competitions", label: "Competitions" },
