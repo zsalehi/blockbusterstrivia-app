@@ -30,6 +30,7 @@ docker compose up -d --build
 - **Home server:** either forward 80/443 on the router (if the ISP allows it), or use Cloudflare Tunnel:
   set `SITE_ADDRESS=:80` and `TUNNEL_TOKEN`, then `docker compose --profile tunnel up -d`.
 
+Production (blockbusterstrivia.com) runs on SonicInfra behind a shared Caddy: see [docs/sonicinfra.md](docs/sonicinfra.md).
 Running it on Unraid: see [docs/unraid.md](docs/unraid.md).
 
 ## Admin and organizer portals

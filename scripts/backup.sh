@@ -6,7 +6,11 @@
 # Set in the environment or .env: RCLONE_REMOTE (e.g. b2:bbt-backups), HEALTHCHECK_URL (optional).
 set -euo pipefail
 cd "$(dirname "$0")/.."
-[ -f .env ] && set -a && . ./.env && set +a
+# Read only the keys this script uses. (.env isn't valid shell: EMAIL_FROM holds "<...>".)
+env_get() { [ -f .env ] && grep -m1 "^$1=" .env | cut -d= -f2- || true; }
+for key in POSTGRES_USER POSTGRES_DB BACKUP_DIR RCLONE_REMOTE HEALTHCHECK_URL; do
+  [ -n "${!key:-}" ] || printf -v "$key" '%s' "$(env_get "$key")"
+done
 
 BACKUP_DIR="${BACKUP_DIR:-./backups}"
 STAMP="$(date +%Y%m%d-%H%M%S)"

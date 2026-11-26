@@ -1,0 +1,7 @@
+# Template for a static site: rename to <name>.caddy, put files in /srv/edge/www/example.com
+example.com {
+	import security_headers
+	encode zstd gzip
+	root * /srv/www/example.com
+	file_server
+}

@@ -1,0 +1,10 @@
+# BlockBusters Trivia app (/srv/blockbusterstrivia-app, alias bbt-app on the edge network)
+blockbusterstrivia.com {
+	import security_headers
+	encode zstd gzip
+	reverse_proxy bbt-app:3000
+}
+
+www.blockbusterstrivia.com {
+	redir https://blockbusterstrivia.com{uri} permanent
+}

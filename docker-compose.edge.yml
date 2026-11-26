@@ -1,0 +1,15 @@
+# Use behind the shared edge Caddy (deploy/edge) instead of this project's own Caddy.
+# On the server, put this in .env:  COMPOSE_FILE=docker-compose.yml:docker-compose.edge.yml
+services:
+  caddy:
+    profiles: ["standalone"]   # the shared edge Caddy serves this app instead
+
+  app:
+    networks:
+      default:
+      edge:
+        aliases: [bbt-app]     # unique name the edge Caddy proxies to
+
+networks:
+  edge:
+    external: true
