@@ -1,0 +1,41 @@
+name: Deploy
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:            # adds a "Run workflow" button for manual redeploys
+
+concurrency:
+  group: production             # one deploy at a time; a new push waits for the current one
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment: production
+    timeout-minutes: 20
+    steps:
+      - name: Install sonic CLI
+        run: |
+          mkdir -p "$HOME/bin"
+          curl -fsSL https://sonicinfra.com/cli/versions/latest/sonic-linux-x86_64 -o "$HOME/bin/sonic"
+          chmod +x "$HOME/bin/sonic"
+          echo "$HOME/bin" >> "$GITHUB_PATH"
+
+      - name: Log in to SonicInfra and configure SSH
+        env:
+          SONIC_MACHINE_TOKEN: ${{ secrets.SONIC_MACHINE_TOKEN }}
+          DEPLOY_SSH_KEY: ${{ secrets.DEPLOY_SSH_KEY }}
+          DEPLOY_KNOWN_HOSTS: ${{ secrets.DEPLOY_KNOWN_HOSTS }}
+        run: |
+          sonic machine-token use "$SONIC_MACHINE_TOKEN"
+          sonic ssh-setup
+          install -m 600 /dev/null ~/.ssh/deploy
+          printf '%s\n' "$DEPLOY_SSH_KEY" > ~/.ssh/deploy
+          printf '%s\n' "$DEPLOY_KNOWN_HOSTS" >> ~/.ssh/known_hosts
+
+      - name: Deploy
+        run: ssh -i ~/.ssh/deploy -o IdentitiesOnly=yes zsalehi313@apps-01.sonicinfra
